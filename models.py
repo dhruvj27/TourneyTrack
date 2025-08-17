@@ -36,6 +36,7 @@ class Team(db.Model):
     name = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
     manager_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    manager_contact = db.Column(db.String(20))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=True)
     registration_status = db.Column(db.String(20), default='PENDING')  # PENDING, APPROVED, REJECTED
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
@@ -69,3 +70,40 @@ class Match(db.Model):
     team1 = db.relationship('Team', foreign_keys=[team1_id], backref='home_matches')
     team2 = db.relationship('Team', foreign_keys=[team2_id], backref='away_matches')
     winner = db.relationship('Team', foreign_keys=[winner_id], backref='won_matches')
+# Utility functions for database operations
+def init_default_data():
+    """Initialize default data for the application"""
+    
+    # Create default SMC admin user
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(username='admin', role='smc')
+        admin.set_password('admin123')
+        db.session.add(admin)
+    
+    # Create default tournament
+    tournament = Tournament.query.filter_by(name='Inter-Department Sports Tournament 2025').first()
+    if not tournament:
+        tournament = Tournament(
+            name='Inter-Department Sports Tournament 2025',
+            start_date=datetime(2025, 9, 1).date(),
+            end_date=datetime(2025, 9, 30).date(),
+            status='active',
+            rules='Standard inter-department tournament rules apply.'
+        )
+        db.session.add(tournament)
+    
+    # Create default venues
+    venues = ['Sports Complex A', 'Ground B', 'Basketball Court 1', 'Badminton Court 2']
+    for venue_name in venues:
+        venue = Venue.query.filter_by(name=venue_name).first()
+        if not venue:
+            venue = Venue(name=venue_name, is_available=True)
+            db.session.add(venue)
+    
+    db.session.commit()
+    return tournament.id  # Return default tournament ID
+
+def get_default_tournament():
+    """Get the default tournament"""
+    return Tournament.query.filter_by(name='Inter-Department Sports Tournament 2025').first()
