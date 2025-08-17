@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Details</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 text-white px-6 py-3">
+    <a href="index.html" class="text-sm hover:underline">← Back</a>
+  </nav>
+
+  <!-- Tournament Actions -->
+  <main class="max-w-4xl mx-auto px-6 py-8">
+    <h2 id="tournament-title" class="text-3xl font-bold mb-8 flex justify-center"></h2>
+    <div class="grid gap-4">
+     <button onclick="window.location.href='register.html?name='+encodeURIComponent(name)" 
+        class="bg-blue-600 text-white rounded-lg p-8 hover:bg-blue-700 transition">
+  Register Teams
+</button>
+
+      <button class="bg-green-600 text-white rounded-lg p-8 hover:bg-green-700 transition">Update Schedule</button>
+      <button class="bg-purple-600 text-white rounded-lg p-8 hover:bg-purple-700 transition">Update Results</button>
+    </div>
+  </main>
+
+  <script>
+    // Extract tournament name from URL
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get("name") || "Tournament";
+    document.getElementById("tournament-title").textContent = name;
+  </script>
+
+</body>
+</html>

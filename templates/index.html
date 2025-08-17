@@ -1,12 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TourneyTrack</title>
-    <link rel="stylesheet" href="../static/css/index.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SMC Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1 id="head">TourneyTrack</h1>
+<body class="bg-gray-50 text-gray-800">
+  <!-- Navbar -->
+  <nav class="bg-gray-800 text-white px-6 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <h1 class="text-xl font-semibold tracking-tight">Tourney Trackers</h1>
+      <div class="flex gap-2">
+        <a href="login-team.html" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20">Login as Team</a>
+        <a href="login-smc.html" class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700">Login as SMC</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <!-- Upcoming -->
+    <section class="bg-white rounded-xl shadow border border-gray-100">
+      <header class="flex items-center justify-between px-5 sm:px-6 py-4 border-b">
+        <h3 class="font-semibold text-lg">Upcoming Matches</h3>
+        <span class="text-xs text-gray-500">Next 5</span>
+      </header>
+      <div id="upcoming" class="divide-y"></div>
+    </section>
+
+    <!-- Results -->
+    <section class="bg-white rounded-xl shadow border border-gray-100 mb-10">
+      <header class="flex items-center justify-between px-5 sm:px-6 py-4 border-b">
+        <h3 class="font-semibold text-lg">Recent Results</h3>
+        <span class="text-xs text-gray-500">Latest 10</span>
+      </header>
+      <div id="results" class="divide-y"></div>
+    </section>
+  </main>
+
+  <!-- Shared data helpers -->
+  <script src="../static/data.js"></script>
+  <script>
+    function emptyRow(text) {
+      const div = document.createElement('div');
+      div.className = 'px-5 sm:px-6 py-6 text-sm text-gray-500';
+      div.textContent = text;
+      return div;
+    }
+
+    function matchRow({ leftTop, leftBottom, rightTop, rightBadgeClass }) {
+      const row = document.createElement('div');
+      row.className = 'px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2';
+
+      const left = document.createElement('div');
+      left.className = 'min-w-0';
+      left.innerHTML = `
+        <div class="font-medium text-gray-900 truncate">${leftTop}</div>
+        <div class="mt-0.5 text-xs text-gray-500">${leftBottom}</div>
+      `;
+
+      const right = document.createElement('div');
+      right.className = 'flex items-center gap-2 shrink-0';
+      const badge = document.createElement('span');
+      badge.className = `text-xs px-2 py-1 rounded-full ${rightBadgeClass || 'bg-gray-100 text-gray-700'}`;
+      badge.textContent = rightTop;
+
+      right.appendChild(badge);
+      row.appendChild(left);
+      row.appendChild(right);
+      return row;
+    }
+
+    function render() {
+      const up = document.getElementById('upcoming');
+      const res = document.getElementById('results');
+
+      up.innerHTML = res.innerHTML = '';
+
+      // Upcoming
+      const upcoming = getUpcoming(5);
+      if (upcoming.length === 0) up.appendChild(emptyRow('No upcoming matches.'));
+      upcoming.forEach(f => {
+        const when = new Date(f.dateISO).toLocaleString();
+        const teams = `${getTeamName(f.homeId)} <span class="text-gray-400">vs</span> ${getTeamName(f.awayId)}`;
+        up.appendChild(matchRow({
+          leftTop: teams,
+          leftBottom: `Tournament: ${f.tournament}`,
+          rightTop: when,
+          rightBadgeClass: 'bg-blue-50 text-blue-700'
+        }));
+      });
+
+      // Results
+      const results = getResults(10);
+      if (results.length === 0) res.appendChild(emptyRow('No results yet.'));
+      results.forEach(f => {
+        const date = new Date(f.dateISO).toLocaleDateString();
+        const score = `${getTeamName(f.homeId)} ${f.home} - ${f.away} ${getTeamName(f.awayId)}`;
+        res.appendChild(matchRow({
+          leftTop: score,
+          leftBottom: `Tournament: ${f.tournament}`,
+          rightTop: date,
+          rightBadgeClass: 'bg-green-50 text-green-700'
+        }));
+      });
+    }
+
+    render();
+  </script>
 </body>
 </html>

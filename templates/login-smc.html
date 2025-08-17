@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SMC Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <nav class="bg-gray-800 text-white px-6 py-3 flex items-center justify-between">
+    <a href="index.html" class="text-sm hover:underline">← Back</a>
+    <h1 class="text-lg font-semibold">Login as SMC</h1>
+  </nav>
+
+  <main class="max-w-md mx-auto px-6 py-10">
+    <form id="form" class="bg-white rounded-lg shadow p-6 space-y-4">
+       <div>
+        <label class="block text-sm font-medium mb-1">Username</label>
+        <input id="user" type="text" class="w-full border rounded p-2" required/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Password</label>
+        <input id="pass" type="password" class="w-full border rounded p-2" required/>
+      </div>
+      <button class="w-full bg-blue-600 text-white rounded py-2 hover:bg-blue-700">Login</button>
+      <p id="err" class="text-red-600 text-sm hidden">Incorrect password.</p>
+      <p class="text-xs text-gray-500">Demo password: <span class="font-mono">admin123</span></p>
+    </form>
+  </main>
+
+  <script src="../static/data.js"></script>
+  <script>
+    document.getElementById('form').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const ok = loginSMSC(document.getElementById('pass').value);
+      if (!ok) document.getElementById('err').classList.remove('hidden');
+      else location.href = 'smsc-dashboard.html';
+    });
+  </script>
+</body>
+</html>

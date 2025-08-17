@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 text-white px-6 py-3">
+    <h1 class="text-xl font-semibold">SMC Dashboard</h1>
+  </nav>
+
+  <!-- Tournament List -->
+  <main class="max-w-4xl mx-auto px-6 py-8">
+    <h2 class="text-3xl font-bold mb-8 flex justify-center">Tournaments</h2>
+    <div class="grid gap-4">
+      <a href="tournament.html?name=Heritage Football" 
+         class="block bg-white shadow-lg rounded-lg p-8 hover:bg-gray-100 transition">
+        Heritage Football
+      </a>
+      <a href="tournament.html?name=Summer Cup" 
+         class="block bg-white shadow-lg rounded-lg p-8 hover:bg-gray-100 transition">
+        Summer Cup
+      </a>
+      <a href="tournament.html?name=Intercollege League" 
+         class="block bg-white shadow-lg rounded-lg p-8 hover:bg-gray-100 transition">
+        Intercollege League
+      </a>
+    </div>
+  </main>
+
+</body>
+</html>

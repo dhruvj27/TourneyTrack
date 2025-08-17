@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add New Team</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 text-white px-6 py-3 flex justify-between items-center">
+    <a href="javascript:history.back()" class="text-sm hover:underline">← Back</a>
+    <h1 class="text-lg font-semibold">Add New Team</h1>
+  </nav>
+
+  <!-- Form -->
+  <main class="max-w-4xl mx-auto px-6 py-10">
+    <h2 class="text-3xl font-bold mb-8 flex justify-center">Team Details</h2>
+
+    <!-- Success Message -->
+    <div id="success-message" class="hidden mb-6 p-4 bg-green-100 text-green-700 rounded-lg">
+      ✅ Team added successfully!
+    </div>
+
+    <form id="team-form" class="space-y-4 bg-white p-6 rounded-lg shadow-md">
+      <div>
+        <label class="block mb-1 font-medium">Team Name</label>
+        <input type="text" id="teamName" class="w-full border rounded-lg p-2" required>
+      </div>
+      <!-- <div>
+        <label class="block mb-1 font-medium">Department</label>
+        <input type="text" id="department" class="w-full border rounded-lg p-2" required>
+      </div> -->
+
+      <!-- Players Section -->
+      <!-- Players Section -->
+<div id="players-section">
+  <label class="block mb-2 font-medium">Players</label>
+  <div id="players-list" class="space-y-2"></div>
+  <button type="button" id="add-player" 
+    class="mt-2 px-3 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-500 hover:text-white transition">
+    ➕ Add Player
+  </button>
+</div>
+
+
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+        Save Team
+      </button>
+    </form>
+
+    <!-- Display Added Teams -->
+    <div id="teams-display" class="mt-10">
+      <h3 class="text-xl font-semibold mb-4">Added Teams</h3>
+      <div id="teams-container" class="space-y-4"></div>
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById("team-form");
+    const successMessage = document.getElementById("success-message");
+    const teamsContainer = document.getElementById("teams-container");
+    const playersList = document.getElementById("players-list");
+    const addPlayerBtn = document.getElementById("add-player");
+
+    // Load teams from localStorage
+    let teams = JSON.parse(localStorage.getItem("teams")) || [];
+
+    // Generate truly unique ID (timestamp)
+    function generateTeamId() {
+      return "T" + Date.now();
+    }
+
+    // Add Player Input Fields
+   // Add Player Input Fields
+addPlayerBtn.addEventListener("click", () => {
+  const playerDiv = document.createElement("div");
+  playerDiv.classList.add("grid", "grid-cols-2", "md:grid-cols-4", "gap-2");
+
+  playerDiv.innerHTML = `
+    <input type="text" placeholder="Player Name" class="border rounded-lg p-2" required>
+    <input type="text" placeholder="Department" class="border rounded-lg p-2" required>
+    <input type="text" placeholder="Year" class="border rounded-lg p-2" required>
+    <input type="text" placeholder="Contact Number" class="border rounded-lg p-2" required>
+  `;
+  playersList.appendChild(playerDiv);
+});
+
+
+    // Save Team
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const teamName = document.getElementById("teamName").value;
+    //   const department = document.getElementById("department").value;
+      const players = [];
+
+      playersList.querySelectorAll("div").forEach(playerDiv => {
+  const inputs = playerDiv.querySelectorAll("input");
+  players.push({
+    name: inputs[0].value,
+    department: inputs[1].value,
+    year: inputs[2].value,
+    contact: inputs[3].value
+  });
+});
+        if (players.length === 0) {
+            alert("Please add at least one player.");
+            return;
+        }
+
+      const newTeam = {
+        id: generateTeamId(),
+        name: teamName,
+        // department,
+        players
+      };
+
+      teams.push(newTeam);
+      localStorage.setItem("teams", JSON.stringify(teams));
+
+      successMessage.classList.remove("hidden");
+      renderTeams();
+
+      // Reset form
+      form.reset();
+      playersList.innerHTML = "";
+    });
+
+    // Render Teams
+    function renderTeams() {
+      teamsContainer.innerHTML = "";
+      teams.forEach((team, index) => {
+        const teamCard = document.createElement("div");
+        teamCard.classList.add("bg-white", "shadow-md", "rounded-lg", "p-4");
+        teamCard.innerHTML = `
+          <h4 class="text-lg font-bold">${team.name} <span class="text-sm text-gray-500">(${team.id})</span></h4>
+      
+          <p><strong>Players:</strong></p>
+          <ul class="list-disc list-inside">
+            ${team.players.map(p => `<li>${p.name} - ${p.contact}</li>`).join("")}
+          </ul>
+          <div class="mt-3 flex gap-2">
+          
+            <button onclick="deleteTeam(${index})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+          </div>
+        `;
+        teamsContainer.appendChild(teamCard);
+      });
+    }
+
+    // Delete Team
+    function deleteTeam(index) {
+      teams.splice(index, 1);
+      localStorage.setItem("teams", JSON.stringify(teams));
+      renderTeams();
+    }
+
+    // Update Team
+    // function updateTeam(index) {
+    //   const team = teams[index];
+    //   document.getElementById("teamName").value = team.name;
+    // //   document.getElementById("department").value = team.department;
+    //   playersList.innerHTML = "";
+    //   team.players.forEach(p => {
+    //     const playerDiv = document.createElement("div");
+    //     playerDiv.classList.add("flex", "gap-2");
+    //     playerDiv.innerHTML = `
+    //       <input type="text" value="${p.name}" class="flex-1 border rounded-lg p-2" required>
+    //       <input type="text" value="${p.contact}" class="flex-1 border rounded-lg p-2" required>
+    //     `;
+    //     playersList.appendChild(playerDiv);
+    //   });
+      // Remove team temporarily so saving will overwrite it
+    //   teams.splice(index, 1);
+    //   localStorage.setItem("teams", JSON.stringify(teams));
+    //   renderTeams();
+    // }
+
+    // Initial render
+    renderTeams();
+  </script>
+</body>
+</html>
