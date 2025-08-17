@@ -70,6 +70,7 @@ class Match(db.Model):
     team1 = db.relationship('Team', foreign_keys=[team1_id], backref='home_matches')
     team2 = db.relationship('Team', foreign_keys=[team2_id], backref='away_matches')
     winner = db.relationship('Team', foreign_keys=[winner_id], backref='won_matches')
+
 # Utility functions for database operations
 def init_default_data():
     """Initialize default data for the application"""
@@ -92,14 +93,6 @@ def init_default_data():
             rules='Standard inter-department tournament rules apply.'
         )
         db.session.add(tournament)
-    
-    # Create default venues
-    venues = ['Sports Complex A', 'Ground B', 'Basketball Court 1', 'Badminton Court 2']
-    for venue_name in venues:
-        venue = Venue.query.filter_by(name=venue_name).first()
-        if not venue:
-            venue = Venue(name=venue_name, is_available=True)
-            db.session.add(venue)
     
     db.session.commit()
     return tournament.id  # Return default tournament ID
