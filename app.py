@@ -99,7 +99,7 @@ def logout():
 
 # SMC Routes
 
-@app.route('/smc/dashboard')
+@app.route('/smc_dashboard')
 @require_smc_login
 def smc_dashboard():
     """SMC dashboard"""
@@ -125,7 +125,7 @@ def smc_dashboard():
         Match.date >= date.today()
     ).order_by(Match.date, Match.time).limit(5).all()
     
-    return render_template('smc/dashboard.html',
+    return render_template('smc_dashboard.html',
                          tournament=tournament,
                          stats=stats,
                          recent_teams=tournament_teams,
