@@ -113,7 +113,7 @@ def smc_dashboard():
     }
     
     # Get recent teams
-    recent_teams = Team.query.filter_by(is_active=True).order_by(Team.created_at.desc()).limit(5).all()
+    tournament_teams = Team.query.filter_by(is_active=True).order_by(Team.created_at.desc()).all()
     
     # Get upcoming matches
     upcoming_matches = Match.query.filter(
@@ -124,7 +124,7 @@ def smc_dashboard():
     return render_template('smc/dashboard.html',
                          tournament=tournament,
                          stats=stats,
-                         recent_teams=recent_teams,
+                         recent_teams=tournament_teams,
                          upcoming_matches=upcoming_matches)
 
 @app.route('/smc/register-team', methods=['GET', 'POST'])
@@ -141,8 +141,8 @@ def register_team():
                 department=request.form['department'],
                 manager_name=request.form['manager_name'],
                 manager_contact=request.form['manager_contact'],
-                manager_email=request.form['manager_email'],
-                team_id=request.form['team_id']
+                team_id=request.form['team_id'],
+                password=request.form['password'],
                 tournament_id = tournament.id
             )
             
@@ -164,7 +164,6 @@ def register_team():
                         'department': request.form.get(f'player_{i}_dept', team.department),
                         'year': request.form.get(f'player_{i}_year', ''),
                         'contact': request.form.get(f'player_{i}_contact', ''),
-                        'position': request.form.get(f'player_{i}_position', 'Player')
                     })
             
             # Create player records
