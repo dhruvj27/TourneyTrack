@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, time, timezone
+from werkzeug.security import generate_password_hash, check_password_hash
 import pytz
 
 db = SQLAlchemy()
@@ -8,9 +9,15 @@ IST = pytz.timezone('Asia/Kolkata')
 
 class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, primary_key=True)
-    password = db.Column(db.String(120), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # SMC or TEAM_MANAGER
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 class Tournament(db.Model):
@@ -28,7 +35,7 @@ class Tournament(db.Model):
 
 class Team(db.Model):
     team_id = db.Column(db.Integer, primary_key=True)
-    password = db.Column(db.String(120), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
     manager_id = db.Column(db.Integer, db.ForeignKey('user.username'), nullable=False)
@@ -39,6 +46,12 @@ class Team(db.Model):
     
     # Relationships
     players = db.relationship('Player', backref='team', lazy=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -75,7 +88,8 @@ def init_default_data():
     # Create default SMC admin user
     admin = User.query.filter_by(username='admin').first()
     if not admin:
-        admin = User(username='admin', role='smc',password = 'admin123')
+        admin = User(username='admin', role='smc')
+        admin.set_password('admin123')
         db.session.add(admin)
     
     # Create default tournament
