@@ -56,11 +56,13 @@ class Team(db.Model):
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    student_id = db.Column(db.String(20), unique=True, nullable=False)
+    roll_number = db.Column(db.String(20), unique = True, nullable = False)
     contact = db.Column(db.String(15))
     department = db.Column(db.String(50))
+    year = db.Column(db.String(10))
     team_id = db.Column(db.Integer, db.ForeignKey('team.team_id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
+    is_active = db.Column(db.Boolean, default=True)
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
