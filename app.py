@@ -53,7 +53,7 @@ def index():
                          total_teams=total_teams,
                          upcoming_matches=upcoming_matches)
 
-@app.route('/login/smc', methods=['GET', 'POST'])
+@app.route('/login-smc', methods=['GET', 'POST'])
 def smc_login():
     """SMC login"""
     if request.method == 'POST':
@@ -69,7 +69,7 @@ def smc_login():
         else:
             flash('Invalid credentials!', 'error')
     
-    return render_template('smc/login.html')
+    return render_template('login-smc.html')
 
 @app.route('/login/team', methods=['GET', 'POST'])
 def team_login():
