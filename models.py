@@ -8,7 +8,8 @@ db = SQLAlchemy()
 IST = pytz.timezone('Asia/Kolkata')
 
 class User(db.Model):
-    username = db.Column(db.String(80), unique=True, nullable=False, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
+    username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # SMC or TEAM_MANAGER
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
@@ -34,7 +35,8 @@ class Tournament(db.Model):
     matches = db.relationship('Match', backref='tournament', lazy=True)
 
 class Team(db.Model):
-    team_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
+    team_id = db.Column(db.String(20), unique=True, nullable=False)  # Login ID
     password_hash = db.Column(db.String(128), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
