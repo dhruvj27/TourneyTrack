@@ -146,9 +146,9 @@ def register_team():
                 manager_name=request.form['manager_name'],
                 manager_contact=request.form['manager_contact'],
                 team_id=request.form['team_id'],
-                password=request.form['password'],
                 tournament_id = tournament.id
             )
+            team.set_password(request.form['password'])
             
             db.session.add(team)
             db.session.flush()  # Get team.id
