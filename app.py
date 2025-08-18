@@ -146,7 +146,6 @@ def register_team():
                 tournament_id = tournament.id
             )
             
-            
             db.session.add(team)
             db.session.flush()  # Get team.id
             
