@@ -19,9 +19,9 @@ with app.app_context():
 def require_smc_login(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session or session.get('user_type') != 'smc':
+        if 'username' not in session or session.get('user_type') != 'smc':
             flash('Please log in as SMC to access this page.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('smc_login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -30,7 +30,7 @@ def require_team_login(f):
     def decorated_function(*args, **kwargs):
         if 'team_id' not in session or session.get('user_type') != 'team':
             flash('Please log in as Team to access this page.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('team_login'))
         return f(*args, **kwargs)
     return decorated_function
 
