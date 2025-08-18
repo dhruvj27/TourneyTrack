@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SMSC Board</title>
+  <title>SMC Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -51,7 +51,7 @@
   <script src="../static/data.js"></script>
   <script>
     const user = getCurrentUser();
-    if (!user || user.role!=='smsc') location.href='login-smc.html';
+    if (!user || user.role!=='smc') location.href='login-smc.html';
 
     // Populate team selects
     const teams = load('teams', []);
