@@ -71,7 +71,7 @@ def smc_login():
     
     return render_template('login-smc.html')
 
-@app.route('/login/team', methods=['GET', 'POST'])
+@app.route('/login-team', methods=['GET', 'POST'])
 def team_login():
     """Team login"""
     if request.method == 'POST':
@@ -88,7 +88,7 @@ def team_login():
         else:
             flash('Invalid team credentials!', 'error')
     
-    return render_template('team/login.html')
+    return render_template('login-team.html')
 
 @app.route('/logout')
 def logout():
@@ -99,7 +99,7 @@ def logout():
 
 # SMC Routes
 
-@app.route('/smc_dashboard')
+@app.route('/smc-dashboard')
 @require_smc_login
 def smc_dashboard():
     """SMC dashboard"""
@@ -125,13 +125,13 @@ def smc_dashboard():
         Match.date >= date.today()
     ).order_by(Match.date, Match.time).limit(5).all()
     
-    return render_template('smc_dashboard.html',
+    return render_template('smc-dashboard.html',
                          tournament=tournament,
                          stats=stats,
-                         recent_teams=tournament_teams,
+                         tournament_teams=tournament_teams,
                          upcoming_matches=upcoming_matches)
 
-@app.route('/smc/register-team', methods=['GET', 'POST'])
+@app.route('/register-team', methods=['GET', 'POST'])
 @require_smc_login
 def register_team():
     """UC_01: Register Player/Team"""
@@ -186,7 +186,7 @@ def register_team():
             db.session.rollback()
             flash(f'Error registering team: {str(e)}', 'error')
     
-    return render_template('smc/register_team.html')
+    return render_template('register-team.html')
 
 
 if __name__=="__main__":
