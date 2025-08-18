@@ -1,14 +1,19 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from models import db, User, Tournament, Team, Player, Match, init_default_data, get_default_tournament
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tourneytrack'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/tournament.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tournament.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+    init_default_data()
+    print("Database initialized successfully!")
 
 # Decorators for authentication
 def require_smc_login(f):
@@ -40,7 +45,7 @@ def index():
     total_teams = Team.query.filter_by(is_active=True).count()
     upcoming_matches = Match.query.filter(
         Match.status == 'scheduled',
-        Match.date >= date.today()
+        Match.date >= datetime.now().date()
     ).count()
     
     return render_template('index.html', 
@@ -57,7 +62,6 @@ def smc_login():
         
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
-            session['user_id'] = user.id
             session['user_type'] = 'smc'
             session['username'] = user.username
             flash('Login successful!', 'success')

@@ -1,112 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SMC Dashboard</title>
+  <meta charset="utf-8" />
+  <title>TourneyTrackers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind CDN (simple setup) -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 text-gray-900">
+
   <!-- Navbar -->
-  <nav class="bg-gray-800 text-white px-6 py-3">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
-      <h1 class="text-xl font-semibold tracking-tight">Tourney Trackers</h1>
-      <div class="flex gap-2">
-        <a href="login-team.html" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20">Login as Team</a>
-        <a href="login-smc.html" class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700">Login as SMC</a>
+  <nav class="bg-black">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <span class="text-white text-xl font-semibold">TourneyTrackers</span>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('smc_login') }}" class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm">
+          Login as SMC
+        </a>
+        <a href="{{ url_for('team_login') }}" class="inline-flex items-center px-3 py-2 rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm">
+          Login as Team
+        </a>
       </div>
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-    <!-- Upcoming -->
-    <section class="bg-white rounded-xl shadow border border-gray-100">
-      <header class="flex items-center justify-between px-5 sm:px-6 py-4 border-b">
-        <h3 class="font-semibold text-lg">Upcoming Matches</h3>
-        <span class="text-xs text-gray-500">Next 5</span>
-      </header>
-      <div id="upcoming" class="divide-y"></div>
+  <main class="max-w-6xl mx-auto px-4 py-6">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for category, message in messages %}
+            <div
+              class="px-4 py-2 rounded-md text-sm
+              {% if category == 'success' %} bg-green-50 text-green-800 border border-green-200
+              {% elif category == 'error' %} bg-red-50 text-red-800 border border-red-200
+              {% elif category == 'info' %} bg-blue-50 text-blue-800 border border-blue-200
+              {% else %} bg-gray-50 text-gray-800 border border-gray-200
+              {% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Welcome / Tournament -->
+    <section class="text-center my-6">
+      <h1 class="text-4xl font-bold">
+        Welcome to
+        {% if tournament and tournament.name %}
+          {{ tournament.name }}
+        {% else %}
+          the Tournament
+        {% endif %}
+      </h1>
+      {% if tournament and tournament.start_date and tournament.end_date %}
+        <p class="text-gray-600 mt-1">
+          {{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }}
+        </p>
+      {% endif %}
     </section>
 
-    <!-- Results -->
-    <section class="bg-white rounded-xl shadow border border-gray-100 mb-10">
-      <header class="flex items-center justify-between px-5 sm:px-6 py-4 border-b">
-        <h3 class="font-semibold text-lg">Recent Results</h3>
-        <span class="text-xs text-gray-500">Latest 10</span>
-      </header>
-      <div id="results" class="divide-y"></div>
+    <!-- Stats -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
+      <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4 text-center">
+        <div class="text-gray-500 text-sm">Total Teams</div>
+        <div class="text-4xl font-semibold">{{ total_teams or 0 }}</div>
+      </div>
+      <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4 text-center">
+        <div class="text-gray-500 text-sm">Upcoming Matches</div>
+        <div class="text-4xl font-semibold">{{ upcoming_matches or 0 }}</div>
+      </div>
     </section>
+
+    <!-- Bottom CTA -->
+   
+
   </main>
 
-  <!-- Shared data helpers -->
-  <script src="../static/data.js"></script>
-  <script>
-    function emptyRow(text) {
-      const div = document.createElement('div');
-      div.className = 'px-5 sm:px-6 py-6 text-sm text-gray-500';
-      div.textContent = text;
-      return div;
-    }
-
-    function matchRow({ leftTop, leftBottom, rightTop, rightBadgeClass }) {
-      const row = document.createElement('div');
-      row.className = 'px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2';
-
-      const left = document.createElement('div');
-      left.className = 'min-w-0';
-      left.innerHTML = `
-        <div class="font-medium text-gray-900 truncate">${leftTop}</div>
-        <div class="mt-0.5 text-xs text-gray-500">${leftBottom}</div>
-      `;
-
-      const right = document.createElement('div');
-      right.className = 'flex items-center gap-2 shrink-0';
-      const badge = document.createElement('span');
-      badge.className = `text-xs px-2 py-1 rounded-full ${rightBadgeClass || 'bg-gray-100 text-gray-700'}`;
-      badge.textContent = rightTop;
-
-      right.appendChild(badge);
-      row.appendChild(left);
-      row.appendChild(right);
-      return row;
-    }
-
-    function render() {
-      const up = document.getElementById('upcoming');
-      const res = document.getElementById('results');
-
-      up.innerHTML = res.innerHTML = '';
-
-      // Upcoming
-      const upcoming = getUpcoming(5);
-      if (upcoming.length === 0) up.appendChild(emptyRow('No upcoming matches.'));
-      upcoming.forEach(f => {
-        const when = new Date(f.dateISO).toLocaleString();
-        const teams = `${getTeamName(f.homeId)} <span class="text-gray-400">vs</span> ${getTeamName(f.awayId)}`;
-        up.appendChild(matchRow({
-          leftTop: teams,
-          leftBottom: `Tournament: ${f.tournament}`,
-          rightTop: when,
-          rightBadgeClass: 'bg-blue-50 text-blue-700'
-        }));
-      });
-
-      // Results
-      const results = getResults(10);
-      if (results.length === 0) res.appendChild(emptyRow('No results yet.'));
-      results.forEach(f => {
-        const date = new Date(f.dateISO).toLocaleDateString();
-        const score = `${getTeamName(f.homeId)} ${f.home} - ${f.away} ${getTeamName(f.awayId)}`;
-        res.appendChild(matchRow({
-          leftTop: score,
-          leftBottom: `Tournament: ${f.tournament}`,
-          rightTop: date,
-          rightBadgeClass: 'bg-green-50 text-green-700'
-        }));
-      });
-    }
-
-    render();
-  </script>
 </body>
 </html>
