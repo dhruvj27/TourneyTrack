@@ -395,10 +395,36 @@ def add_results():
     
 # Team Routes
 
+# @app.route('/team-dashboard')
+# @require_team_login
+# def team_dashboard():
+#     """Team dashboard showing team info, fixtures, and stats"""
+#     team_id = session['team_id']
+#     team = Team.query.filter_by(team_id=team_id).first()
+    
+#     if not team:
+#         flash('Team not found!', 'error')
+#         return redirect(url_for('team_login'))
+    
+#     # Get team statistics
+#     upcoming_matches = team.get_upcoming_matches()
+#     completed_matches = team.get_completed_matches()
+#     record = team.get_match_record()
+    
+#     # Get team players
+#     players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+    
+#     return render_template('team-dashboard.html',
+#                          team=team,
+#                          players=players,
+#                          upcoming_matches=upcoming_matches[:3],  # Show only next 3
+#                          completed_matches=completed_matches[:3],  # Show only last 3
+#                          record=record)
+
 @app.route('/team-dashboard')
 @require_team_login
 def team_dashboard():
-    """Team dashboard showing team info, fixtures, and stats"""
+    """Team dashboard with team info, stats, fixtures and results"""
     team_id = session['team_id']
     team = Team.query.filter_by(team_id=team_id).first()
     
@@ -406,25 +432,25 @@ def team_dashboard():
         flash('Team not found!', 'error')
         return redirect(url_for('team_login'))
     
-    # Get team statistics
+    # Get team statistics using existing methods
     upcoming_matches = team.get_upcoming_matches()
     completed_matches = team.get_completed_matches()
     record = team.get_match_record()
     
-    # Get team players
-    players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+    # Get active players using the relationship
+    active_players = [p for p in team.players if p.is_active]
     
     return render_template('team-dashboard.html',
                          team=team,
-                         players=players,
-                         upcoming_matches=upcoming_matches[:3],  # Show only next 3
-                         completed_matches=completed_matches[:3],  # Show only last 3
+                         players=active_players,
+                         upcoming_matches=upcoming_matches,
+                         completed_matches=completed_matches,
                          record=record)
 
 @app.route('/update-profile', methods=['GET', 'POST'])
 @require_team_login
 def update_profile():
-    """UC_02: Team/Player's Profile Updation"""
+    """UC_02: Team/Player's Profile Updation - handles team details AND player management"""
     team_id = session['team_id']
     team = Team.query.filter_by(team_id=team_id).first()
     
@@ -434,60 +460,75 @@ def update_profile():
     
     if request.method == 'POST':
         try:
-            # Update team information
-            if request.form.get('manager_name'):
-                team.manager_name = request.form['manager_name'].strip()
-            if request.form.get('manager_contact'):
-                team.manager_contact = request.form['manager_contact'].strip()
+            action = request.form.get('action', 'update_team')
             
-            # Update players
-            players = Player.query.filter_by(team_id=team_id, is_active=True).all()
-            for player in players:
-                player_prefix = f'player_{player.id}_'
-                update_data = {}
+            if action == 'update_team':
+                # Update team information
+                if request.form.get('manager_name'):
+                    team.manager_name = request.form['manager_name'].strip()
+                if request.form.get('manager_contact'):
+                    team.manager_contact = request.form['manager_contact'].strip()
                 
-                for field in ['name', 'contact', 'department', 'year']:
-                    form_key = player_prefix + field
-                    if form_key in request.form:
-                        value = request.form[form_key].strip()
-                        if value:  # Only update if not empty
-                            update_data[field] = value
+                db.session.commit()
+                flash('Team details updated successfully!', 'success')
                 
-                player.update_player(**update_data)
+            elif action == 'update_players':
+                # Update existing players
+                active_players = [p for p in team.players if p.is_active]
+                for player in active_players:
+                    player_prefix = f'player_{player.id}_'
+                    update_data = {}
+                    
+                    for field in ['name', 'contact', 'department', 'year', 'roll_number']:
+                        form_key = player_prefix + field
+                        if form_key in request.form:
+                            value = request.form[form_key].strip()
+                            if value:
+                                update_data[field] = value
+                    
+                    if update_data:
+                        player.update_player(**update_data)
+                
+                db.session.commit()
+                flash('Player details updated successfully!', 'success')
+                
+            elif action == 'add_player':
+                # Add new player
+                player = Player(
+                    name=request.form['new_player_name'].strip(),
+                    roll_number=request.form.get('new_player_roll', ''),
+                    contact=request.form.get('new_player_contact', ''),
+                    department=request.form.get('new_player_department', team.department),
+                    year=request.form.get('new_player_year', ''),
+                    team_id=team_id
+                )
+                
+                db.session.add(player)
+                db.session.commit()
+                flash('Player added successfully!', 'success')
+                
+            elif action == 'remove_player':
+                # Remove player (set inactive)
+                player_id = int(request.form['player_id'])
+                player = Player.query.filter_by(id=player_id, team_id=team_id).first()
+                
+                if player:
+                    player.is_active = False
+                    db.session.commit()
+                    flash('Player removed successfully!', 'success')
+                else:
+                    flash('Player not found!', 'error')
             
-            db.session.commit()
-            flash('Profile updated successfully!', 'success')
-            return redirect(url_for('team_dashboard'))
+            return redirect(url_for('update_profile'))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Error updating profile: {str(e)}', 'error')
     
-    # Get team players for display
-    players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+    # GET request - display form with current data
+    active_players = [p for p in team.players if p.is_active]
     
-    return render_template('update-profile.html', team=team, players=players)
-
-@app.route('/view-fixtures')
-@require_team_login
-def view_fixtures():
-    """View team's fixtures and results"""
-    team_id = session['team_id']
-    team = Team.query.filter_by(team_id=team_id).first()
-    
-    if not team:
-        flash('Team not found!', 'error')
-        return redirect(url_for('team_login'))
-    
-    upcoming_matches = team.get_upcoming_matches()
-    completed_matches = team.get_completed_matches()
-    record = team.get_match_record()
-    
-    return render_template('view-fixtures.html',
-                         team=team,
-                         upcoming_matches=upcoming_matches,
-                         completed_matches=completed_matches,
-                         record=record)
+    return render_template('update-profile.html', team=team, players=active_players)
 
 # Public Routes (for viewers)
 
