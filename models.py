@@ -74,7 +74,7 @@ class Team(db.Model):
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    roll_number = db.Column(db.String(20), unique = True, nullable = False)
+    roll_number = db.Column(db.Integer, unique = True, nullable = False)
     contact = db.Column(db.String(15))
     department = db.Column(db.String(50))
     year = db.Column(db.String(10))
@@ -103,11 +103,47 @@ class Match(db.Model):
     team1_score = db.Column(db.String(100))
     team2_score = db.Column(db.String(100))
 
-    winner_id = db.Column(db.Integer, db.ForeignKey('team.team_id'), nullable=True)
-    match_result = db.Column(db.String(20))
+    winner_id = db.Column(db.String(20), db.ForeignKey('team.team_id'), nullable=True)
 
     status = db.Column(db.String(20), default='scheduled')  # scheduled, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
+
+
+    @property
+    def is_upcoming(self):
+        """Check if match is upcoming"""
+        return self.status == 'scheduled' and self.date >= date.today()
+    
+    @property
+    def versus_display(self):
+        """Display match as Team A vs Team B"""
+        return f"{self.team1.name} vs {self.team2.name}"
+    
+    @property
+    def score_display(self):
+        """Display score in readable format"""
+        if self.status != 'completed':
+            return "Match not completed"
+        return f"{self.team1.name}: {self.team1_score} | {self.team2.name}: {self.team2_score}"
+    
+    @property
+    def result_display(self):
+        """Display result summary"""
+        if self.status != 'completed':
+            return "Match not completed"
+        
+        if self.winner_id:
+            return f"Winner: {self.winner.name}"
+        else:
+            return "Match drawn"
+        
+    def opponent_of(self, team_id):
+        """Get opponent team for given team_id"""
+        if self.team1_id == team_id:
+            return self.team2
+        elif self.team2_id == team_id:
+            return self.team1
+        return None
     
 # Utility functions for database operations
 def init_default_data():
