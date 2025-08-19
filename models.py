@@ -95,8 +95,7 @@ class Match(db.Model):
     team2_score = db.Column(db.String(100))
 
     winner_id = db.Column(db.Integer, db.ForeignKey('team.team_id'), nullable=True)
-    match_result = db.Column(db.String(20))
-
+    
     status = db.Column(db.String(20), default='scheduled')  # scheduled, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
 
