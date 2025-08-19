@@ -70,6 +70,29 @@ class Team(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def get_upcoming_matches(self):
+        """Get upcoming matches for this team"""
+        return Match.query.filter(
+            db.or_(Match.team1_id == self.team_id, Match.team2_id == self.team_id),
+            Match.status == 'scheduled',
+            Match.date >= date.today()
+        ).order_by(Match.date, Match.time).all()
+    
+    def get_completed_matches(self):
+        """Get completed matches for this team"""
+        return Match.query.filter(
+            db.or_(Match.team1_id == self.team_id, Match.team2_id == self.team_id),
+            Match.status == 'completed'
+        ).order_by(Match.date.desc(), Match.time.desc()).all()
+    
+    def get_match_record(self):
+        """Get win/loss/draw record"""
+        completed = self.get_completed_matches()
+        wins = len([m for m in completed if m.winner_id == self.team_id])
+        losses = len([m for m in completed if m.winner_id and m.winner_id != self.team_id])
+        draws = len([m for m in completed if not m.winner_id])
+        return {'wins': wins, 'losses': losses, 'draws': draws, 'total': len(completed)}
 
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
