@@ -1,4 +1,4 @@
 Flask
 Flask-SQLAlchemy
 Pytz
-Werkzueg
+werkzeug
