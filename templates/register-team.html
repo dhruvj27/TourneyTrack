@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Register Team</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+  <nav class="bg-black text-white">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="{{ url_for('index') }}" class="text-sm hover:underline">← Back</a>
+      <h1 class="text-lg font-semibold">Register Team</h1>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for category, message in messages %}
+            <div class="px-4 py-2 rounded text-sm
+              {% if category == 'success' %} bg-green-50 text-green-800 border border-green-200
+              {% elif category == 'error' %} bg-red-50 text-red-800 border border-red-200
+              {% else %} bg-gray-50 text-gray-800 border border-gray-200
+              {% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="bg-white border rounded-lg shadow-sm p-5 space-y-5">
+
+      <!-- Team info -->
+      <section>
+        <h2 class="text-xl font-semibold mb-3">Team Details</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm mb-1">Team Name</label>
+            <input name="team_name" class="w-full border rounded p-2" required />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Team ID</label>
+            <input name="team_id" class="w-full border rounded p-2" required />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Department</label>
+            <input name="department" class="w-full border rounded p-2" required />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Manager Name</label>
+            <input name="manager_name" class="w-full border rounded p-2" required />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Manager Contact</label>
+            <input name="manager_contact" class="w-full border rounded p-2" />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Password</label>
+            <input type="password" name="password" class="w-full border rounded p-2" required />
+          </div>
+        </div>
+      </section>
+
+      <!-- Players -->
+      <section>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Players (optional)</h2>
+          <button type="button" id="add-player"
+                  class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+            + Add Player
+          </button>
+        </div>
+
+        <!-- This wrapper is hidden until the first player row is added -->
+        <div id="players-section" class="hidden">
+          <div id="players" class="space-y-3"></div>
+
+          <!-- Row template (hidden) -->
+          <template id="player-row-template">
+            <div class="grid lg:grid-cols-5 sm:grid-cols-2 gap-3 items-end player-row">
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Name</label>
+                <input class="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Roll</label>
+                <input class="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Dept</label>
+                <input class="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Year</label>
+                <input class="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Contact</label>
+                <div class="flex gap-2">
+                  <input class="w-full border rounded p-2" />
+                  <button type="button"
+                          class="shrink-0 px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 remove-btn">🗑</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <div class="pt-2">
+        <button class="px-5 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+          Register Team
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    // Elements
+    const playersWrap = document.getElementById('players');
+    const playersSection = document.getElementById('players-section');
+    const tpl = document.getElementById('player-row-template');
+    const addBtn = document.getElementById('add-player');
+
+    // Add row only when user clicks the button
+    addBtn.addEventListener('click', () => {
+      addRow();
+      // unhide the section the first time we add a row
+      playersSection.classList.remove('hidden');
+    });
+
+    // Remove row handler
+    playersWrap.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-btn')) {
+        const row = e.target.closest('.player-row');
+        if (row) {
+          row.remove();
+          renumber();
+          // hide the section again if no rows left
+          if (playersWrap.querySelectorAll('.player-row').length === 0) {
+            playersSection.classList.add('hidden');
+          }
+        }
+      }
+    });
+
+    function addRow() {
+      const clone = tpl.content.cloneNode(true);
+      playersWrap.appendChild(clone);
+      renumber();
+    }
+
+    // Name the inputs so backend loop picks them up:
+    // player_1_name, player_1_roll, ... player_N_contact
+    function renumber() {
+      const rows = [...playersWrap.querySelectorAll('.player-row')];
+      rows.forEach((row, idx) => {
+        const i = idx + 1;
+        const inputs = row.querySelectorAll('input');
+        inputs[0].setAttribute('name', `player_${i}_name`);
+        inputs[1].setAttribute('name', `player_${i}_roll`);
+        inputs[2].setAttribute('name', `player_${i}_dept`);
+        inputs[3].setAttribute('name', `player_${i}_year`);
+        inputs[4].setAttribute('name', `player_${i}_contact`);
+      });
+    }
+  </script>
+</body>
+</html>

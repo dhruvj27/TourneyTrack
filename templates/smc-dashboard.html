@@ -16,25 +16,23 @@
   </nav>
 
   <main class="max-w-5xl mx-auto px-6 py-8 space-y-8">
-    <section class="bg-white rounded-lg shadow p-4">
-      <h2 class="font-semibold text-lg mb-3">Quick Links</h2>
-      <div class="flex flex-wrap gap-3">
-        <a href="add-team.html" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">➕ Add New Team</a>
-        <a href="existing-team.html?name=Heritage%20Football" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300">📋 Register Team </a>
-      </div>
-    </section>
+   <!-- Section 1: Register Team -->
+<section class="bg-white rounded-lg shadow p-4">
+  <h2 class="font-semibold text-lg mb-3">Quick Links</h2>
+  <a href="{{ url_for('register_team') }}" 
+     class="block px-3 py-2 rounded bg-blue-600 text-white text-center hover:bg-blue-700">
+     📋 Register Team
+  </a>
+</section>
 
-    <section class="bg-white rounded-lg shadow p-4">
-      <h2 class="font-semibold text-lg mb-3">Add Fixture</h2>
-      <form id="fx" class="grid md:grid-cols-4 gap-3">
-        <input id="tournament" class="border rounded p-2" placeholder="Tournament " required>
-        <select id="home" class="border rounded p-2"></select>
-        <select id="away" class="border rounded p-2"></select>
-        <input id="date" type="datetime-local" class="border rounded p-2" required>
-        <button class="md:col-span-4 bg-blue-600 text-white rounded py-2 hover:bg-blue-700">Save Fixture</button>
-      </form>
-      <p id="ok" class="text-green-700 mt-2 hidden">Fixture added.</p>
-    </section>
+<!-- Section 2: Schedule Matches -->
+<section class="bg-white rounded-lg shadow p-4 mt-6">
+  <h2 class="font-semibold text-lg mb-3">Quick Links</h2>
+  <a href="{{ url_for('schedule_matches') }}" 
+     class="block px-3 py-2 rounded bg-gray-800 text-white text-center hover:bg-black">
+     📅 Schedule Matches
+  </a>
+</section>
 
     <section class="bg-white rounded-lg shadow p-4">
       <h2 class="font-semibold text-lg mb-3">Record Result</h2>

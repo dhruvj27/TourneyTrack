@@ -242,18 +242,25 @@ def schedule_matches():
 
     if request.method == 'POST':
         try:
+            # Get team names before creating the match for better error handling
+            team1 = Team.query.get(request.form['team1_id'])
+            team2 = Team.query.get(request.form['team2_id'])
+            
+            if not team1 or not team2:
+                flash('Invalid team selection!', 'error')
+                return redirect(url_for('schedule_matches'))
             
             match = Match(
                 tournament_id=tournament.id,
-                team1_id=request.form['team1_id'],
-                team2_id=request.form['team2_id'],
+                team1_id=team1.team_id,  # Use team_id (string) instead of id (integer)
+                team2_id=team2.team_id,  # Use team_id (string) instead of id (integer)
                 date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
                 time=datetime.strptime(request.form['time'], '%H:%M').time(),
                 venue=request.form['venue']
             )
             
             # Basic validation
-            if match.team1_id == match.team2_id:
+            if team1.team_id == team2.team_id:
                 flash('A team cannot play against itself!', 'error')
                 return redirect(url_for('schedule_matches'))
             
@@ -271,30 +278,34 @@ def schedule_matches():
             db.session.add(match)
             db.session.commit()
             
-            flash(f'Match scheduled: {match.team1.name} vs {match.team2.name} on {match.date} at {match.time}', 'success')
+            # Use the team objects we fetched earlier instead of match.team1.name
+            flash(f'Match scheduled: {team1.name} vs {team2.name} on {match.date} at {match.time}', 'success')
             return redirect(url_for('schedule_matches'))
             
         except Exception as e:
             db.session.rollback()
             flash(f'Error scheduling match: {str(e)}', 'error')
     
+    
     # Get active teams for dropdown
     active_teams = Team.query.filter_by(is_active=True).order_by(Team.name).all()
+    all_teams = Team.query.all()
 
     # Get all matches
     all_matches = Match.query.order_by(Match.date, Match.time).all()
     
     # Separate upcoming and completed
     today = date.today()
-    upcoming_matches = [m for m in all_matches if m.is_upcoming]
-    completed_matches = [m for m in all_matches if m.status == 'completed']
-    
-    return render_template('schedule-matches.html', 
+    now = datetime.now()
+    upcoming_matches = [m for m in all_matches if datetime.combine(m.date, m.time) >= now]
+    completed_matches = [m for m in all_matches if datetime.combine(m.date, m.time) < now]
+
+    return render_template('schedule-matches.html',
                            teams=active_teams,
                            tournament=tournament,
+                           all_teams=all_teams,
                            upcoming_matches=upcoming_matches,
                            completed_matches=completed_matches)
-
 @app.route('/add-results', methods=['GET', 'POST'])
 @require_smc_login
 def add_results():
