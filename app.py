@@ -80,7 +80,7 @@ def team_login():
         
         team = Team.query.filter_by(team_id=team_id).first()
         if team and team.check_password(password):
-            session['team_id'] = team.id
+            session['team_id'] = team.team_id
             session['user_type'] = 'team'
             session['team_name'] = team.name
             flash('Login successful!', 'success')
@@ -215,7 +215,7 @@ def register_team():
                         department=request.form.get(f'player_{i}_dept', team.department),
                         year=request.form.get(f'player_{i}_year', ''),
                         contact=request.form.get(f'player_{i}_contact', ''),
-                        team_id=team.id,
+                        team_id=team.team_id,
                     )
                     db.session.add(player)
                     players_added += 1
@@ -319,6 +319,10 @@ def add_results():
                 flash('Results have already been entered for this match!', 'error')
                 return redirect(url_for('add_results'))
 
+            if match.date > date.today():
+                flash('Cannot enter results for future matches!', 'error')
+                return redirect(url_for('add_results'))
+            
             # Update match with results
             match.team1_score = request.form['team1_score'].strip()
             match.team2_score = request.form['team2_score'].strip()
