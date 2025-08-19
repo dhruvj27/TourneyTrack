@@ -13,7 +13,7 @@
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <!-- Left side -->
     <div class="flex items-center gap-8">
-      <a href="{{ url_for('index') }}" class="text-sm hover:underline">← Back</a>
+      <a href="{{ url_for('smc_dashboard') }}" class="text-sm hover:underline">← Back</a>
       <h1 class="text-lg font-semibold">Add Results</h1>
     </div>
 
@@ -96,7 +96,7 @@
             </select>
           </div>
 
-          <!-- Scores row; labels filled by JS on match selection -->
+        >
           <div>
             <label id="label_team1" class="block text-sm font-medium mb-1">Team 1 Score</label>
             <input type="number" min="0" name="team1_score" class="w-full border rounded p-2" required />
@@ -111,7 +111,7 @@
             <label class="block text-sm font-medium mb-1">Winner (optional – leave blank for draw)</label>
             <select name="winner_id" id="winner_id" class="w-full border rounded p-2">
               <option value="">— Draw / No winner —</option>
-              <!-- JS will inject Team 1 and Team 2 options based on the selected match -->
+           
             </select>
           </div>
         </div>
@@ -125,7 +125,7 @@
       {% endif %}
     </section>
 
-    <!-- Recently Completed -->
+    
    <!-- Recently Completed -->
 <section class="bg-white rounded-lg shadow p-6 mt-6">
   <h3 class="text-lg font-semibold mb-3">Recently Completed</h3>
