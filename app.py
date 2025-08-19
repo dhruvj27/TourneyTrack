@@ -185,5 +185,54 @@ def register_team():
     return render_template('register-team.html')
 
 
+@app.route('/schedule-matches', methods=['GET', 'POST'])
+@require_smc_login
+def schedule_matches():
+    """UC_03: Schedule Adding"""
+    if request.method == 'POST':
+        try:
+            tournament = get_default_tournament()
+            
+            match = Match(
+                tournament_id=tournament.id,
+                team1_id=request.form['team1_id'],
+                team2_id=request.form['team2_id'],
+                date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
+                time=datetime.strptime(request.form['time'], '%H:%M').time(),
+                venue=request.form['venue']
+            )
+            
+            # Basic validation
+            if match.team1_id == match.team2_id:
+                flash('A team cannot play against itself!', 'error')
+                return redirect(url_for('schedule_matches'))
+            
+            # Check for venue conflicts (same venue, date, time)
+            existing_match = Match.query.filter_by(
+                venue=match.venue,
+                date=match.date,
+                time=match.time
+            ).first()
+            
+            if existing_match:
+                flash(f'Venue "{match.venue}" is already booked at {match.time} on {match.date}', 'error')
+                return redirect(url_for('schedule_matches'))
+            
+            db.session.add(match)
+            db.session.commit()
+            
+            flash(f'Match scheduled: {match.team1.name} vs {match.team2.name} on {match.date} at {match.time}', 'success')
+            return redirect(url_for('smc_fixtures'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error scheduling match: {str(e)}', 'error')
+    
+    # Get active teams for dropdown
+    active_teams = Team.query.filter_by(is_active=True).order_by(Team.name).all()
+    
+    return render_template('schedule-matches.html', teams=active_teams)
+
+
 if __name__=="__main__":
     app.run(debug=True,port=5000)
