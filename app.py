@@ -211,12 +211,13 @@ def register_team():
                 if name:
                     player = Player(
                         name=name,
-                        roll_number=request.form.get(f'player_{i}_roll', ''),
+                        roll_number=int(request.form.get(f'player_{i}_roll', '')),
                         department=request.form.get(f'player_{i}_dept', team.department),
                         year=request.form.get(f'player_{i}_year', ''),
                         contact=request.form.get(f'player_{i}_contact', ''),
-                        team_id=team.team_id,
+                        team_id=team.team_id
                     )
+                    
                     db.session.add(player)
                     players_added += 1
                 else:
@@ -452,7 +453,7 @@ def update_profile():
                         if value:  # Only update if not empty
                             update_data[field] = value
                 
-                player.update_profile(**update_data)
+                player.update_player(**update_data)
             
             db.session.commit()
             flash('Profile updated successfully!', 'success')

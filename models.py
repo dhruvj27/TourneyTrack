@@ -105,14 +105,11 @@ class Player(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     is_active = db.Column(db.Boolean, default=True)
     
-    # def update_profile(self, year=None, department=None, contact=None):
-    #     if year is not None:
-    #         self.year = year
-    #     if department is not None:
-    #         self.department = department
-    #     if contact is not None:
-    #         self.contact = contact
-    #     db.session.commit()
+    def update_player(self, **kwargs):
+    #Update player profile with provided fields
+        for field, value in kwargs.items():
+            if hasattr(self, field) and value:
+                setattr(self, field, value)
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
