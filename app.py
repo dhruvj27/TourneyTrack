@@ -392,5 +392,132 @@ def add_results():
                      teams=active_teams)
     
     
+# Team Routes
+
+@app.route('/team-dashboard')
+@require_team_login
+def team_dashboard():
+    """Team dashboard showing team info, fixtures, and stats"""
+    team_id = session['team_id']
+    team = Team.query.filter_by(team_id=team_id).first()
+    
+    if not team:
+        flash('Team not found!', 'error')
+        return redirect(url_for('team_login'))
+    
+    # Get team statistics
+    upcoming_matches = team.get_upcoming_matches()
+    completed_matches = team.get_completed_matches()
+    record = team.get_match_record()
+    
+    # Get team players
+    players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+    
+    return render_template('team-dashboard.html',
+                         team=team,
+                         players=players,
+                         upcoming_matches=upcoming_matches[:3],  # Show only next 3
+                         completed_matches=completed_matches[:3],  # Show only last 3
+                         record=record)
+
+@app.route('/update-profile', methods=['GET', 'POST'])
+@require_team_login
+def update_profile():
+    """UC_02: Team/Player's Profile Updation"""
+    team_id = session['team_id']
+    team = Team.query.filter_by(team_id=team_id).first()
+    
+    if not team:
+        flash('Team not found!', 'error')
+        return redirect(url_for('team_login'))
+    
+    if request.method == 'POST':
+        try:
+            # Update team information
+            if request.form.get('manager_name'):
+                team.manager_name = request.form['manager_name'].strip()
+            if request.form.get('manager_contact'):
+                team.manager_contact = request.form['manager_contact'].strip()
+            
+            # Update players
+            players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+            for player in players:
+                player_prefix = f'player_{player.id}_'
+                update_data = {}
+                
+                for field in ['name', 'contact', 'department', 'year']:
+                    form_key = player_prefix + field
+                    if form_key in request.form:
+                        value = request.form[form_key].strip()
+                        if value:  # Only update if not empty
+                            update_data[field] = value
+                
+                player.update_profile(**update_data)
+            
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('team_dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating profile: {str(e)}', 'error')
+    
+    # Get team players for display
+    players = Player.query.filter_by(team_id=team_id, is_active=True).all()
+    
+    return render_template('update-profile.html', team=team, players=players)
+
+@app.route('/view-fixtures')
+@require_team_login
+def view_fixtures():
+    """View team's fixtures and results"""
+    team_id = session['team_id']
+    team = Team.query.filter_by(team_id=team_id).first()
+    
+    if not team:
+        flash('Team not found!', 'error')
+        return redirect(url_for('team_login'))
+    
+    upcoming_matches = team.get_upcoming_matches()
+    completed_matches = team.get_completed_matches()
+    record = team.get_match_record()
+    
+    return render_template('view-fixtures.html',
+                         team=team,
+                         upcoming_matches=upcoming_matches,
+                         completed_matches=completed_matches,
+                         record=record)
+
+# Public Routes (for viewers)
+
+@app.route('/public-fixtures')
+def public_fixtures():
+    """UC_04: Public view of upcoming fixtures for viewers"""
+    tournament = get_default_tournament()
+    
+    # Get all upcoming matches
+    upcoming_matches = Match.query.filter(
+        Match.status == 'scheduled',
+        Match.date >= date.today()
+    ).order_by(Match.date, Match.time).all()
+    
+    return render_template('public-fixtures.html',
+                         tournament=tournament,
+                         upcoming_matches=upcoming_matches)
+
+@app.route('/public-results')
+def public_results():
+    """Public view of completed match results for viewers"""
+    tournament = get_default_tournament()
+    
+    # Get all completed matches
+    completed_matches = Match.query.filter_by(status='completed').order_by(
+        Match.date.desc(), Match.time.desc()
+    ).all()
+    
+    return render_template('public-results.html',
+                         tournament=tournament,
+                         completed_matches=completed_matches)
+
 if __name__=="__main__":
     app.run(debug=True,port=5000)
