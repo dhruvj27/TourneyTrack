@@ -30,9 +30,11 @@ class Tournament(db.Model):
     rules = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
-    # Relationships
-    teams = db.relationship('Team', backref='tournament', lazy=True)
-    matches = db.relationship('Match', backref='tournament', lazy=True)
+    # Relationships 
+    teams = db.relationship('Team', backref='tournament', lazy=True,
+                          foreign_keys='Team.tournament_id')
+    matches = db.relationship('Match', backref='tournament', lazy=True,
+                            foreign_keys='Match.tournament_id')
 
 class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
@@ -47,8 +49,21 @@ class Team(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
-    # Relationships
-    players = db.relationship('Player', backref='team', lazy=True)
+     Relationships - Match relationships in Team class with backrefs
+    players = db.relationship('Player', backref='team', lazy=True,
+                            foreign_keys='Player.team_id')
+    
+    # Match relationships with backrefs (creates team1, team2, winner in Match)
+    matches_as_team1 = db.relationship('Match', foreign_keys='Match.team1_id',
+                                      primaryjoin='Team.team_id == Match.team1_id',
+                                      backref='team1', lazy=True)
+    matches_as_team2 = db.relationship('Match', foreign_keys='Match.team2_id',
+                                      primaryjoin='Team.team_id == Match.team2_id', 
+                                      backref='team2', lazy=True)
+    matches_won = db.relationship('Match', foreign_keys='Match.winner_id',
+                                 primaryjoin='Team.team_id == Match.winner_id',
+                                 backref='winner', lazy=True)
+
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -81,11 +96,6 @@ class Match(db.Model):
     status = db.Column(db.String(20), default='SCHEDULED')  # SCHEDULED, COMPLETED
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
-    # Relationships
-    team1 = db.relationship('Team', foreign_keys=[team1_id], backref='home_matches')
-    team2 = db.relationship('Team', foreign_keys=[team2_id], backref='away_matches')
-    winner = db.relationship('Team', foreign_keys=[winner_id], backref='won_matches')
-
 # Utility functions for database operations
 def init_default_data():
     """Initialize default data for the application"""
