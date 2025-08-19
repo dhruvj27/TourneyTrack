@@ -189,9 +189,11 @@ def register_team():
 @require_smc_login
 def schedule_matches():
     """UC_03: Schedule Adding"""
+
+    tournament = get_default_tournament()
+    
     if request.method == 'POST':
         try:
-            tournament = get_default_tournament()
             
             match = Match(
                 tournament_id=tournament.id,
@@ -222,7 +224,7 @@ def schedule_matches():
             db.session.commit()
             
             flash(f'Match scheduled: {match.team1.name} vs {match.team2.name} on {match.date} at {match.time}', 'success')
-            return redirect(url_for('smc_fixtures'))
+            return redirect(url_for('schedule_matches'))
             
         except Exception as e:
             db.session.rollback()
@@ -230,8 +232,20 @@ def schedule_matches():
     
     # Get active teams for dropdown
     active_teams = Team.query.filter_by(is_active=True).order_by(Team.name).all()
+
+    # Get all matches
+    all_matches = Match.query.order_by(Match.date, Match.time).all()
     
-    return render_template('schedule-matches.html', teams=active_teams)
+    # Separate upcoming and completed
+    today = date.today()
+    upcoming_matches = [m for m in all_matches if m.is_upcoming]
+    completed_matches = [m for m in all_matches if m.status == 'completed']
+    
+    return render_template('schedule-matches.html', 
+                           teams=active_teams,
+                           tournament=tournament,
+                           upcoming_matches=upcoming_matches,
+                           completed_matches=completed_matches)
 
 
 if __name__=="__main__":
