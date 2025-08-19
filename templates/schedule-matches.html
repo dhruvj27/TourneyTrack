@@ -40,7 +40,7 @@
   <!-- Add Match Form -->
   <main class="max-w-6xl mx-auto px-4 py-6">
     {% macro get_team_name(tid) -%}
-  {%- for t in all_teams -%}
+  {%- for t in teams -%}
     {%- if t.team_id|string == tid|string -%}
       {%- if t.name and t.name.strip() -%}
         {{ t.name }}
@@ -91,7 +91,7 @@
           <div class="font-medium">
             <!-- Test direct relationship -->
             {% if m.team1 and m.team2 %}
-              {{ m.team1.name or m.team1.team_id }} vs {{ m.team2.name or m.team2.team_id }}
+              {{ m.versus_display }}
             {% else %}
               <!-- Fallback to macro if relationships don't work -->
               {{ get_team_name(m.team1_id) }} vs {{ get_team_name(m.team2_id) }}
@@ -117,7 +117,7 @@
     {% for m in completed_matches %}
       <li class="py-2">
         <div class="font-medium">
-          {{ get_team_name(m.team1_id) }} vs {{ get_team_name(m.team2_id) }}
+          {{ m.versus_display }}
         </div>
         <div class="text-sm text-gray-600">
           {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}

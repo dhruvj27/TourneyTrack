@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, date, time, timezone
+from datetime import datetime, date, time, timezone, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import pytz
 
@@ -161,8 +161,8 @@ def init_default_data():
     if not tournament:
         tournament = Tournament(
             name='Inter-Department Sports Tournament 2025',
-            start_date=datetime(2025, 9, 1).date(),
-            end_date=datetime(2025, 9, 30).date(),
+            start_date=date.today(),  # Starts today
+            end_date=date.today() + timedelta(days=30),  # Ends in 30 days
             status='active',
             rules='Standard inter-department tournament rules apply.'
         )

@@ -264,6 +264,15 @@ def schedule_matches():
                 flash('A team cannot play against itself!', 'error')
                 return redirect(url_for('schedule_matches'))
             
+            # Match date must be within tournament period
+            if match.date < tournament.start_date or match.date > tournament.end_date:
+                flash(f'Match date must be between {tournament.start_date} and {tournament.end_date}', 'error')
+                return redirect(url_for('schedule_matches'))
+            
+            if match.date < date.today():
+                flash('Cannot schedule matches in the past!', 'error')
+                return redirect(url_for('schedule_matches'))
+            
             # Check for venue conflicts (same venue, date, time)
             existing_match = Match.query.filter_by(
                 venue=match.venue,
@@ -275,11 +284,24 @@ def schedule_matches():
                 flash(f'Venue "{match.venue}" is already booked at {match.time} on {match.date}', 'error')
                 return redirect(url_for('schedule_matches'))
             
+            # Team Conflict Check - Check if either team already has a match at the same time
+            existing_team_match = Match.query.filter(
+                db.or_(
+                    db.and_(Match.team1_id == match.team1_id, Match.date == match.date, Match.time == match.time),
+                    db.and_(Match.team2_id == match.team1_id, Match.date == match.date, Match.time == match.time),
+                    db.and_(Match.team1_id == match.team2_id, Match.date == match.date, Match.time == match.time),
+                    db.and_(Match.team2_id == match.team2_id, Match.date == match.date, Match.time == match.time)
+                )
+            ).first()
+
+            if existing_team_match:
+                flash('One of the teams already has a match scheduled at this time', 'error')
+                return redirect(url_for('schedule_matches'))
+            
             db.session.add(match)
             db.session.commit()
             
-            # Use the team objects we fetched earlier instead of match.team1.name
-            flash(f'Match scheduled: {team1.name} vs {team2.name} on {match.date} at {match.time}', 'success')
+            flash(f'Match scheduled: {match.versus_display} on {match.date} at {match.time}', 'success')
             return redirect(url_for('schedule_matches'))
             
         except Exception as e:
@@ -297,8 +319,9 @@ def schedule_matches():
     # Separate upcoming and completed
     today = date.today()
     now = datetime.now()
-    upcoming_matches = [m for m in all_matches if datetime.combine(m.date, m.time) >= now]
-    completed_matches = [m for m in all_matches if datetime.combine(m.date, m.time) < now]
+    today = date.today()
+    upcoming_matches = [m for m in all_matches if m.is_upcoming]
+    completed_matches = [m for m in all_matches if m.status == 'completed']
 
     return render_template('schedule-matches.html',
                            teams=active_teams,
