@@ -9,13 +9,21 @@
 <body class="bg-gray-100">
 
   <!-- Navbar -->
-  <nav class="bg-blue-600 text-white">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="{{ url_for('index') }}" class="font-semibold">🏆 TourneyTrack</a>
-      <span class="text-sm opacity-90">
-        {% if tournament and tournament.name %}{{ tournament.name }}{% else %}Tournament{% endif %}
-      </span>
+   <nav class="bg-black text-white">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <!-- Left side -->
+    <div class="flex items-center gap-8">
+      <a href="{{ url_for('index') }}" class="text-sm hover:underline">← Back</a>
+      <h1 class="text-lg font-semibold">Schedule Matches</h1>
     </div>
+
+    <!-- Right side -->
+    <a href="{{ url_for('smc_dashboard') }}"
+       class="text-sm bg-gray-500 px-3 py-1 rounded hover:bg-white/20">
+      Dashboard
+    </a>
+  </div>
+</nav>
   </nav>
 
   <!-- Flash messages -->

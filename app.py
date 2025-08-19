@@ -269,9 +269,9 @@ def schedule_matches():
                 flash(f'Match date must be between {tournament.start_date} and {tournament.end_date}', 'error')
                 return redirect(url_for('schedule_matches'))
             
-            if match.date < date.today():
-                flash('Cannot schedule matches in the past!', 'error')
-                return redirect(url_for('schedule_matches'))
+            # if match.date < date.today():
+            #     flash('Cannot schedule matches in the past!', 'error')
+            #     return redirect(url_for('schedule_matches'))
             
             # Check for venue conflicts (same venue, date, time)
             existing_match = Match.query.filter_by(
@@ -321,7 +321,8 @@ def schedule_matches():
     now = datetime.now()
     today = date.today()
     upcoming_matches = [m for m in all_matches if m.is_upcoming]
-    completed_matches = [m for m in all_matches if m.status == 'completed']
+    completed_matches = [m for m in all_matches if datetime.combine(m.date, m.time) < datetime.now()]
+
 
     return render_template('schedule-matches.html',
                            teams=active_teams,

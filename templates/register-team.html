@@ -8,12 +8,21 @@
 </head>
 <body class="bg-gray-50 text-gray-900">
 
-  <nav class="bg-black text-white">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+ <nav class="bg-black text-white">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <!-- Left side -->
+    <div class="flex items-center gap-8">
       <a href="{{ url_for('index') }}" class="text-sm hover:underline">← Back</a>
       <h1 class="text-lg font-semibold">Register Team</h1>
     </div>
-  </nav>
+
+    <!-- Right side -->
+    <a href="{{ url_for('smc_dashboard') }}"
+       class="text-sm bg-gray-500 px-3 py-1 rounded hover:bg-white/20">
+      Dashboard
+    </a>
+  </div>
+</nav>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
 

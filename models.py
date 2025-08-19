@@ -161,7 +161,7 @@ def init_default_data():
     if not tournament:
         tournament = Tournament(
             name='Inter-Department Sports Tournament 2025',
-            start_date=date.today(),  # Starts today
+            start_date=date.today() - timedelta(days=30),  # Starts today
             end_date=date.today() + timedelta(days=30),  # Ends in 30 days
             status='active',
             rules='Standard inter-department tournament rules apply.'
