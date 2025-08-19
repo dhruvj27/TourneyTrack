@@ -153,33 +153,29 @@ def register_team():
             db.session.add(team)
             db.session.flush()  # Get team.id
             
-            # Register team for default tournament
-            if tournament:
-                tournament.teams.append(team)
             
             # Add players if provided
-            players_data = []
-            for i in range(1, 12):  # Support up to 11 players
+            players_added = 0
+            while True:    # Unbound number of players can be added
                 name = request.form.get(f'player_{i}_name', '').strip()
                 if name:
-                    players_data.append({
-                        'name': name,
-                        'roll_number': request.form.get(f'player_{i}_roll', ''),
-                        'department': request.form.get(f'player_{i}_dept', team.department),
-                        'year': request.form.get(f'player_{i}_year', ''),
-                        'contact': request.form.get(f'player_{i}_contact', ''),
-                    })
+                    player = Player(
+                        name=name,
+                        roll_number=request.form.get(f'player_{i}_roll', ''),
+                        department=request.form.get(f'player_{i}_dept', team.department),
+                        year=request.form.get(f'player_{i}_year', ''),
+                        contact=request.form.get(f'player_{i}_contact', ''),
+                        team_id=team.id,
+                    )
+                    db.session.add(player)
+                    players_added +=1
+                else:
+                    break
             
-            # Create player records
-            for player_data in players_data:
-                player = Player(
-                    team_id=team.id,
-                    **player_data
-                )
-                db.session.add(player)
+            
             
             db.session.commit()
-            flash(f'Team "{team.name}" registered successfully! Team ID: {team.team_id}', 'success')
+            flash(f'Team "{team.name}" registered successfully with {players_added} players! Team ID: {team.team_id}', 'success')
             return redirect(url_for('smc_dashboard'))
             
         except Exception as e:
