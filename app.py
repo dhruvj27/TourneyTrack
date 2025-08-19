@@ -295,6 +295,63 @@ def schedule_matches():
                            upcoming_matches=upcoming_matches,
                            completed_matches=completed_matches)
 
+@app.route('/add-results', methods=['GET', 'POST'])
+@require_smc_login
+def add_results():
+    """UC_05: Result Announcements"""
+    if request.method == 'POST':
+        try:
+            match_id = int(request.form['match_id'])
+            match = Match.query.get_or_404(match_id)
+            
+            if match.status == 'completed':
+                flash('Results have already been entered for this match!', 'error')
+                return redirect(url_for('add_results'))
 
+            # Update match with results
+            match.team1_score = request.form['team1_score'].strip()
+            match.team2_score = request.form['team2_score'].strip()
+            match.status = 'completed'
+            
+            # Set winner if provided
+            winner_id = request.form.get('winner_id')
+            if winner_id and winner_id != '':
+                if winner_id not in [match.team1_id, match.team2_id]:
+                    flash('Winner must be one of the participating teams!', 'error')
+                    return redirect(url_for('add_results'))
+                match.winner_id = winner_id
+            else:
+                match.winner_id = None  # For draws or no winner scenarios
+            
+            db.session.commit()
+            
+            flash(f'Results updated for match: {match.team1.name} vs {match.team2.name}', 'success')
+            return redirect(url_for('add_results'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating results: {str(e)}', 'error')
+    
+    # Get matches that can have results added (scheduled matches in the past or today)
+    today = date.today()
+    pending_matches = Match.query.filter(
+        Match.status == 'scheduled',
+        Match.date <= today
+    ).order_by(Match.date, Match.time).all()
+    
+    # Get completed matches for display
+    completed_matches = Match.query.filter_by(status='completed').order_by(
+        Match.date.desc(), Match.time.desc()
+    ).limit(10).all()
+
+    # Get all active teams for winner dropdown
+    active_teams = Team.query.filter_by(is_active=True).all()
+
+    return render_template('add-results.html',
+                     pending_matches=pending_matches,
+                     completed_matches=completed_matches,
+                     teams=active_teams)
+    
+    
 if __name__=="__main__":
     app.run(debug=True,port=5000)
