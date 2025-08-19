@@ -136,20 +136,69 @@ def smc_dashboard():
 def register_team():
     """UC_01: Register Player/Team"""
     if request.method == 'POST':
-        try:
+        try:        
             tournament = get_default_tournament()
 
-            # Create team
-            team = Team(
-                name=request.form['team_name'],
-                department=request.form['department'],
-                manager_name=request.form['manager_name'],
-                manager_contact=request.form['manager_contact'],
-                team_id=request.form['team_id'],
-                tournament_id = tournament.id
-            )
-            team.set_password(request.form['password'])
+            # Store form data in variables first
+            team_name = request.form.get('team_name', '').strip()
+            team_id = request.form.get('team_id', '').strip()
+            department = request.form.get('department', '').strip()
+            manager_name = request.form.get('manager_name', '').strip()
+            password = request.form.get('password', '').strip()
+            manager_contact = request.form.get('manager_contact', '').strip()
+
+            # Validate required fields using the stored variables
             
+            if not team_id:
+                flash('Team ID is required!', 'error')
+                return redirect(url_for('register_team'))
+            
+            # Check for duplicates using the stored variables
+            existing_team_id = Team.query.filter_by(team_id=team_id).first()
+            if existing_team_id:
+                flash('A team with this Team ID already exists!', 'error')
+                return redirect(url_for('register_team'))
+            
+            if not team_name:
+                flash('Team name is required!', 'error')
+                return redirect(url_for('register_team'))
+
+            existing_team_name = Team.query.filter_by(
+                name=team_name, 
+                tournament_id=tournament.id
+            ).first()
+            if existing_team_name:
+                flash('A team with this name already exists in the tournament!', 'error')
+                return redirect(url_for('register_team'))
+            
+
+            if not department:
+                flash('Department is required!', 'error')
+                return redirect(url_for('register_team'))
+
+            if not manager_name:
+                flash('Manager name is required!', 'error')
+                return redirect(url_for('register_team'))
+
+            if not password:
+                flash('Password is required!', 'error')
+                return redirect(url_for('register_team'))
+
+            
+
+
+
+            # Create team using the validated variables
+            team = Team(
+                name=team_name,
+                department=department,
+                manager_name=manager_name,
+                manager_contact=manager_contact,
+                team_id=team_id,
+                tournament_id=tournament.id
+            )
+            team.set_password(password)
+
             db.session.add(team)
             db.session.flush()  # Get team.id
             
@@ -157,6 +206,7 @@ def register_team():
             # Add players if provided
             players_added = 0
             while True:    # Unbound number of players can be added
+                i = players_added + 1
                 name = request.form.get(f'player_{i}_name', '').strip()
                 if name:
                     player = Player(
@@ -168,11 +218,9 @@ def register_team():
                         team_id=team.id,
                     )
                     db.session.add(player)
-                    players_added +=1
+                    players_added += 1
                 else:
                     break
-            
-            
             
             db.session.commit()
             flash(f'Team "{team.name}" registered successfully with {players_added} players! Team ID: {team.team_id}', 'success')
@@ -191,7 +239,7 @@ def schedule_matches():
     """UC_03: Schedule Adding"""
 
     tournament = get_default_tournament()
-    
+
     if request.method == 'POST':
         try:
             
