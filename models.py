@@ -24,9 +24,9 @@ class User(db.Model):
 class Tournament(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), default='UPCOMING')  # UPCOMING, ACTIVE, COMPLETED
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default='upcoming')  # upcoming, active, completed
     rules = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
@@ -45,11 +45,11 @@ class Team(db.Model):
 #    manager_id = db.Column(db.Integer, db.ForeignKey('user.username'), nullable=False)
     manager_name =  db.Column(db.String(100), nullable=False)
     manager_contact = db.Column(db.String(20))
-    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
-     Relationships - Match relationships in Team class with backrefs
+    # Relationships
     players = db.relationship('Player', backref='team', lazy=True,
                             foreign_keys='Player.team_id')
     
@@ -90,10 +90,14 @@ class Match(db.Model):
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
     venue = db.Column(db.String(100), nullable=False)
-    team1_score = db.Column(db.Integer, default=0)
-    team2_score = db.Column(db.Integer, default=0)
+
+    team1_score = db.Column(db.String(100))
+    team2_score = db.Column(db.String(100))
+
     winner_id = db.Column(db.Integer, db.ForeignKey('team.team_id'), nullable=True)
-    status = db.Column(db.String(20), default='SCHEDULED')  # SCHEDULED, COMPLETED
+    match_result = db.Column(db.String(20))
+
+    status = db.Column(db.String(20), default='scheduled')  # scheduled, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
 # Utility functions for database operations
