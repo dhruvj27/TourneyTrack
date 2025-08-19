@@ -532,33 +532,25 @@ def update_profile():
 
 # Public Routes (for viewers)
 
-@app.route('/public-fixtures')
-def public_fixtures():
-    """UC_04: Public view of upcoming fixtures for viewers"""
+@app.route('/public-view')
+def public_view():
+    """Combined public view of fixtures and results"""
     tournament = get_default_tournament()
     
-    # Get all upcoming matches
+    # Get upcoming matches
     upcoming_matches = Match.query.filter(
         Match.status == 'scheduled',
         Match.date >= date.today()
     ).order_by(Match.date, Match.time).all()
     
-    return render_template('public-fixtures.html',
-                         tournament=tournament,
-                         upcoming_matches=upcoming_matches)
-
-@app.route('/public-results')
-def public_results():
-    """Public view of completed match results for viewers"""
-    tournament = get_default_tournament()
-    
-    # Get all completed matches
+    # Get completed matches
     completed_matches = Match.query.filter_by(status='completed').order_by(
         Match.date.desc(), Match.time.desc()
-    ).all()
+    ).limit(10).all()  # Show last 10 results
     
-    return render_template('public-results.html',
+    return render_template('public-view.html',
                          tournament=tournament,
+                         upcoming_matches=upcoming_matches,
                          completed_matches=completed_matches)
 
 if __name__=="__main__":
