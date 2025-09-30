@@ -2,11 +2,30 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from models import db, User, Tournament, Team, Player, Match, init_default_data, get_default_tournament
 from datetime import datetime, timedelta, date
 from functools import wraps
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'tourneytrack'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tournament.db'
+
+# Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tourneytrack')
+
+# Database configuration - supports both local SQLite and remote PostgreSQL
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    # Heroku PostgreSQL URL fix (Heroku uses postgres://, SQLAlchemy needs postgresql://)
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Fallback to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tournament.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,  # Verify connections before using them
+    'pool_recycle': 300,    # Recycle connections after 5 minutes
+}
 
 db.init_app(app)
 
@@ -331,6 +350,7 @@ def schedule_matches():
                            all_teams=all_teams,
                            upcoming_matches=upcoming_matches,
                            completed_matches=completed_matches)
+
 @app.route('/add-results', methods=['GET', 'POST'])
 @require_smc_login
 def add_results():
@@ -394,32 +414,6 @@ def add_results():
     
     
 # Team Routes
-
-# @app.route('/team-dashboard')
-# @require_team_login
-# def team_dashboard():
-#     """Team dashboard showing team info, fixtures, and stats"""
-#     team_id = session['team_id']
-#     team = Team.query.filter_by(team_id=team_id).first()
-    
-#     if not team:
-#         flash('Team not found!', 'error')
-#         return redirect(url_for('team_login'))
-    
-#     # Get team statistics
-#     upcoming_matches = team.get_upcoming_matches()
-#     completed_matches = team.get_completed_matches()
-#     record = team.get_match_record()
-    
-#     # Get team players
-#     players = Player.query.filter_by(team_id=team_id, is_active=True).all()
-    
-#     return render_template('team-dashboard.html',
-#                          team=team,
-#                          players=players,
-#                          upcoming_matches=upcoming_matches[:3],  # Show only next 3
-#                          completed_matches=completed_matches[:3],  # Show only last 3
-#                          record=record)
 
 @app.route('/team-dashboard')
 @require_team_login
@@ -554,4 +548,4 @@ def public_view():
                          completed_matches=completed_matches)
 
 if __name__=="__main__":
-    app.run(debug=True,port=5000)
+    app.run(debug=True, port=5000)

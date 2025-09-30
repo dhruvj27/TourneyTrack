@@ -8,9 +8,11 @@ db = SQLAlchemy()
 IST = pytz.timezone('Asia/Kolkata')
 
 class User(db.Model):
+    __tablename__ = 'user'
+    
     id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)  # Increased for PostgreSQL
     role = db.Column(db.String(20), nullable=False)  # SMC or TEAM_MANAGER
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
 
@@ -22,6 +24,8 @@ class User(db.Model):
 
 
 class Tournament(db.Model):
+    __tablename__ = 'tournament'
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
@@ -36,14 +40,16 @@ class Tournament(db.Model):
     matches = db.relationship('Match', backref='tournament', lazy=True,
                             foreign_keys='Match.tournament_id')
 
+
 class Team(db.Model):
+    __tablename__ = 'team'
+    
     id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
     team_id = db.Column(db.String(20), unique=True, nullable=False)  # Login ID
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)  # Increased for PostgreSQL
     name = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
-#    manager_id = db.Column(db.Integer, db.ForeignKey('user.username'), nullable=False)
-    manager_name =  db.Column(db.String(100), nullable=False)
+    manager_name = db.Column(db.String(100), nullable=False)
     manager_contact = db.Column(db.String(20))
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
@@ -63,7 +69,6 @@ class Team(db.Model):
     matches_won = db.relationship('Match', foreign_keys='Match.winner_id',
                                  primaryjoin='Team.team_id == Match.winner_id',
                                  backref='winner', lazy=True)
-
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -94,10 +99,13 @@ class Team(db.Model):
         draws = len([m for m in completed if not m.winner_id])
         return {'wins': wins, 'losses': losses, 'draws': draws, 'total': len(completed)}
 
+
 class Player(db.Model):
+    __tablename__ = 'player'
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    roll_number = db.Column(db.Integer, unique = True, nullable = False)
+    roll_number = db.Column(db.Integer, unique=True, nullable=False)
     contact = db.Column(db.String(15))
     department = db.Column(db.String(50))
     year = db.Column(db.String(10))
@@ -106,12 +114,15 @@ class Player(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     
     def update_player(self, **kwargs):
-    #Update player profile with provided fields
+        """Update player profile with provided fields"""
         for field, value in kwargs.items():
             if hasattr(self, field) and value:
                 setattr(self, field, value)
 
+
 class Match(db.Model):
+    __tablename__ = 'match'
+    
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
     team1_id = db.Column(db.String(20), db.ForeignKey('team.team_id'), nullable=False)
@@ -119,15 +130,11 @@ class Match(db.Model):
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
     venue = db.Column(db.String(100), nullable=False)
-
     team1_score = db.Column(db.String(100))
     team2_score = db.Column(db.String(100))
-
     winner_id = db.Column(db.String(20), db.ForeignKey('team.team_id'), nullable=True)
-
     status = db.Column(db.String(20), default='scheduled')  # scheduled, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
-
 
     @property
     def is_upcoming(self):
@@ -164,7 +171,8 @@ class Match(db.Model):
         elif self.team2_id == team_id:
             return self.team1
         return None
-    
+
+
 # Utility functions for database operations
 def init_default_data():
     """Initialize default data for the application"""
@@ -181,7 +189,7 @@ def init_default_data():
     if not tournament:
         tournament = Tournament(
             name='Inter-Department Sports Tournament 2025',
-            start_date=date.today() - timedelta(days=30),  # Starts today
+            start_date=date.today() - timedelta(days=30),  # Started 30 days ago
             end_date=date.today() + timedelta(days=30),  # Ends in 30 days
             status='active',
             rules='Standard inter-department tournament rules apply.'
@@ -190,6 +198,7 @@ def init_default_data():
     
     db.session.commit()
     return tournament.id  # Return default tournament ID
+
 
 def get_default_tournament():
     """Get the default tournament"""
