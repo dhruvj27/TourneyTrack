@@ -8,7 +8,7 @@ db = SQLAlchemy()
 IST = pytz.timezone('Asia/Kolkata')
 
 class User(db.Model):
-    __tablename__ = 'user'
+    __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
     username = db.Column(db.String(80), unique=True, nullable=False)
