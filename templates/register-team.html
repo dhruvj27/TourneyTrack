@@ -10,26 +10,16 @@
 
  <nav class="bg-black text-white">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <!-- Left side -->
     <div class="flex items-center gap-8">
-      <a href="{{ url_for('smc_dashboard') }}" class="text-sm hover:underline">← Back</a>
+      <a href="{{ url_for('smc.dashboard') }}" class="text-sm hover:underline">← Back</a>
       <h1 class="text-lg font-semibold">Register Team</h1>
     </div>
-
-    <!-- Right side -->
-    <div class="flex items-center gap-4">
-        <a href="{{ url_for('smc_dashboard') }}"
-          class="text-sm bg-gray-500 px-3 py-1 rounded hover:bg-white/20">
-          Dashboard
-        </a>
-     
-     <a href="{{ url_for('logout') }}" 
-   class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
-  Logout
-</a>
-</div>
+    <a href="{{ url_for('auth.logout') }}" class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
+      Logout
+    </a>
   </div>
 </nav>
+
 
   <main class="max-w-4xl mx-auto px-4 py-6">
 
@@ -50,7 +40,8 @@
       {% endif %}
     {% endwith %}
 
-    <form method="POST" class="bg-white border rounded-lg shadow-sm p-5 space-y-5">
+  <form method="POST" action="{{ url_for('smc.register_team', tournament_id=tournament.id) }}"
+      class="bg-white border rounded-lg shadow-sm p-5 space-y-5">
 
       <!-- Team info -->
       <section>

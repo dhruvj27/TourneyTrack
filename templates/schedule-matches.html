@@ -9,28 +9,14 @@
 <body class="bg-gray-100">
 
   <!-- Navbar -->
-   <nav class="bg-black text-white">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <!-- Left side -->
-    <div class="flex items-center gap-8">
-      <a href="{{ url_for('smc_dashboard') }}" class="text-sm hover:underline">← Back</a>
-      <h1 class="text-lg font-semibold">Schedule Matches</h1>
+  <nav class="bg-black text-white">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-8">
+        <a href="{{ url_for('smc.tournament_detail', tournament_id=tournament.id) }}" class="text-sm hover:underline">← Back</a>
+        <h1 class="text-lg font-semibold">Schedule Matches – {{ tournament.name }}</h1>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">Logout</a>
     </div>
-
-    <!-- Right side -->
-     <div class="flex items-center gap-4">
-        <a href="{{ url_for('smc_dashboard') }}"
-          class="text-sm bg-gray-500 px-3 py-1 rounded hover:bg-white/20">
-          Dashboard
-        </a>
-     
-     <a href="{{ url_for('logout') }}" 
-   class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
-  Logout
-</a>
-</div>
-  </div>
-</nav>
   </nav>
 
   <!-- Flash messages -->
@@ -54,39 +40,26 @@
 
   <!-- Add Match Form -->
   <main class="max-w-6xl mx-auto px-4 py-6">
-    {% macro get_team_name(tid) -%}
-  {%- for t in teams -%}
-    {%- if t.team_id|string == tid|string -%}
-      {%- if t.name and t.name.strip() -%}
-        {{ t.name }}
-      {%- else -%}
-        {{ t.team_id }}
-      {%- endif -%}
-    {%- endif -%}
-  {%- endfor -%}
-{%- endmacro %}
-
     <section class="bg-white rounded shadow p-6">
       <h2 class="text-xl font-semibold mb-4">Add a Match</h2>
 
-      <form method="POST" action="{{ url_for('schedule_matches') }}" class="grid md:grid-cols-2 gap-4">
+      <form method="POST" action="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}" class="grid md:grid-cols-2 gap-4">
         <select name="team1_id" id="team1" class="border rounded p-2" required>
           <option value="" disabled selected>Team 1</option>
           {% for t in teams %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
+            <option value="{{ t.team_id }}">{{ t.name }}</option>
           {% endfor %}
         </select>
 
         <select name="team2_id" id="team2" class="border rounded p-2" required>
           <option value="" disabled selected>Team 2</option>
           {% for t in teams %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
+            <option value="{{ t.team_id }}">{{ t.name }}</option>
           {% endfor %}
         </select>
 
         <input type="date" name="date" class="border rounded p-2" required>
         <input type="time" name="time" class="border rounded p-2" required>
-
         <input type="text" name="venue" class="border rounded p-2 md:col-span-2" placeholder="Venue" required>
 
         <button type="submit" class="md:col-span-2 bg-blue-600 text-white rounded py-2 hover:bg-blue-700">
@@ -96,61 +69,51 @@
     </section>
 
     <!-- Upcoming Matches -->
-{% if upcoming_matches %}
-<section class="bg-white rounded shadow p-6 mt-6">
-  <h3 class="text-lg font-semibold mb-3">Upcoming Matches</h3>
-  <ul class="divide-y">
-    {% for m in upcoming_matches %}
-      <li class="py-2 flex items-center justify-between">
-        <div>
-          <div class="font-medium">
-            <!-- Test direct relationship -->
-            {% if m.team1 and m.team2 %}
-              {{ m.versus_display }}
-            {% else %}
-              <!-- Fallback to macro if relationships don't work -->
-              {{ get_team_name(m.team1_id) }} vs {{ get_team_name(m.team2_id) }}
-              <br><small>DEBUG: team1 exists: {{ m.team1 is not none }}, team2 exists: {{ m.team2 is not none }}</small>
-            {% endif %}
-          </div>
-          <div class="text-sm text-gray-600">
-            {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}
-          </div>
-        </div>
-        <span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">scheduled</span>
-      </li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
+    {% if upcoming_matches %}
+    <section class="bg-white rounded shadow p-6 mt-6">
+      <h3 class="text-lg font-semibold mb-3">Upcoming Matches</h3>
+      <ul class="divide-y">
+        {% for m in upcoming_matches %}
+          <li class="py-2 flex items-center justify-between">
+            <div>
+              <div class="font-medium">
+                {{ m.team1.name or m.team1_id }} vs {{ m.team2.name or m.team2_id }}
+              </div>
+              <div class="text-sm text-gray-600">
+                {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}
+              </div>
+            </div>
+            <span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-800">scheduled</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
 
-<!-- Completed Matches -->
-{% if completed_matches %}
-<section class="bg-white rounded shadow p-6 mt-6">
-  <h3 class="text-lg font-semibold mb-3">Completed Matches</h3>
-  <ul class="divide-y">
-    {% for m in completed_matches %}
-      <li class="py-2">
-        <div class="font-medium">
-          {{ m.versus_display }}
-        </div>
-        <div class="text-sm text-gray-600">
-          {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}
-        </div>
-      </li>
-    {% endfor %}
-  </ul>
-</section>
-{% endif %}
+    <!-- Completed Matches -->
+    {% if completed_matches %}
+    <section class="bg-white rounded shadow p-6 mt-6">
+      <h3 class="text-lg font-semibold mb-3">Completed Matches</h3>
+      <ul class="divide-y">
+        {% for m in completed_matches %}
+          <li class="py-2">
+            <div class="font-medium">{{ m.team1.name or m.team1_id }} vs {{ m.team2.name or m.team2_id }}</div>
+            <div class="text-sm text-gray-600">
+              {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
   </main>
 
   <script>
-    // Prevent choosing same team for home and away
     const t1 = document.getElementById('team1');
     const t2 = document.getElementById('team2');
     function checkTeams(){
       if(t1.value && t2.value && t1.value === t2.value){
-        alert("Home and Away teams must be different!");
+        alert("Both teams must be different!");
         t2.value = "";
       }
     }
