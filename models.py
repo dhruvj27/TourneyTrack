@@ -1,28 +1,72 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, date, time, timezone, timedelta
+from datetime import datetime, date, time, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import pytz
+import re
 
 db = SQLAlchemy()
 
 IST = pytz.timezone('Asia/Kolkata')
 
 class User(db.Model):
+    """Users who can log in - SMCs and Team Managers"""
     __tablename__ = 'users'
     
-    id = db.Column(db.Integer, primary_key=True)  # Auto-increment PK
+    id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)  # Increased for PostgreSQL
-    role = db.Column(db.String(20), nullable=False)  # SMC or TEAM_MANAGER
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'smc' or 'team_manager'
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
 
+    # Relationships
+    #tournaments_created = db.relationship('Tournament', backref='creator', lazy=True, foreign_keys='Tournament.created_by')
+    #teams_created = db.relationship('Team', backref='creator', lazy=True, foreign_keys='Team.created_by')
+
     def set_password(self, password):
+        """Hash and set password"""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        """Verify password"""
         return check_password_hash(self.password_hash, password)
 
+    @staticmethod
+    def validate_format(username, email, password, role):
+        """
+        Validate registration data format (NO database queries).
+        Returns list of errors.
+        Use this for tests that don't have app context.
+        """
+        errors = []
+        
+        # Username validation
+        if not username or len(username.strip()) < 3:
+            errors.append("Username must be at least 3 characters")
+        
+        if username and not username.replace('_', '').replace('-', '').isalnum():
+            errors.append("Username can only contain letters, numbers, hyphens and underscores")
+        
+        # Email validation
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not email or not re.match(email_pattern, email):
+            errors.append("Valid email required")
+        
+        # Password validation
+        if not password or len(password) < 8:
+            errors.append("Password must be at least 8 characters")
+        
+        password_regex = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"
+        if password and not re.fullmatch(password_regex, password):
+            errors.append("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character")
+        
+        # Role validation
+        if role not in ['smc', 'team_manager']:
+            errors.append("Invalid role selected")
+        
+        return errors
 
+    
 class Tournament(db.Model):
     __tablename__ = 'tournament'
     
@@ -35,10 +79,8 @@ class Tournament(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
     # Relationships 
-    teams = db.relationship('Team', backref='tournament', lazy=True,
-                          foreign_keys='Team.tournament_id')
-    matches = db.relationship('Match', backref='tournament', lazy=True,
-                            foreign_keys='Match.tournament_id')
+    teams = db.relationship('Team', backref='tournament', lazy=True, foreign_keys='Team.tournament_id')
+    matches = db.relationship('Match', backref='tournament', lazy=True, foreign_keys='Match.tournament_id')
 
 
 class Team(db.Model):
@@ -55,11 +97,11 @@ class Team(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(IST))
     
-    # Relationships
-    players = db.relationship('Player', backref='team', lazy=True,
-                            foreign_keys='Player.team_id')
     
-    # Match relationships with backrefs (creates team1, team2, winner in Match)
+    # Relationships
+    players = db.relationship('Player', backref='team', lazy=True, foreign_keys='Player.team_id')
+    
+    # Match relationships
     matches_as_team1 = db.relationship('Match', foreign_keys='Match.team1_id',
                                       primaryjoin='Team.team_id == Match.team1_id',
                                       backref='team1', lazy=True)
@@ -173,16 +215,21 @@ class Match(db.Model):
         return None
 
 
-# Utility functions for database operations
 def init_default_data():
     """Initialize default data for the application"""
     
     # Create default SMC admin user
     admin = User.query.filter_by(username='admin').first()
     if not admin:
-        admin = User(username='admin', role='smc')
+        admin = User(username='admin', email='admin@tourneytrack.local', role='smc')
         admin.set_password('admin123')
         db.session.add(admin)
+    else:
+        # Update existing admin with new fields
+        if not admin.email:
+            admin.email = 'admin@tourneytrack.local'
+        if not admin.role:
+            admin.role = 'smc'
     
     # Create default tournament
     tournament = Tournament.query.filter_by(name='Inter-Department Sports Tournament 2025').first()
@@ -193,11 +240,11 @@ def init_default_data():
             end_date=date.today() + timedelta(days=30),  # Ends in 30 days
             status='active',
             rules='Standard inter-department tournament rules apply.'
+            
         )
         db.session.add(tournament)
     
     db.session.commit()
-    return tournament.id  # Return default tournament ID
 
 
 def get_default_tournament():

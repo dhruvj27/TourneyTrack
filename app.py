@@ -3,7 +3,7 @@ from models import db, User, Tournament, Team, Player, Match, init_default_data,
 from datetime import datetime, timedelta, date
 from functools import wraps
 import os
-
+from blueprints.auth import auth_bp
 app = Flask(__name__)
 
 # Configuration
@@ -13,7 +13,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tourneytrack')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Heroku PostgreSQL URL fix (Heroku uses postgres://, SQLAlchemy needs postgresql://)
+    # Heroku PostgreSQL URL fix (postgres:// → postgresql://)
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
@@ -23,8 +23,8 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,  # Verify connections before using them
-    'pool_recycle': 300,    # Recycle connections after 5 minutes
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
 }
 
 db.init_app(app)
@@ -34,10 +34,19 @@ with app.app_context():
     init_default_data()
     print("Database initialized successfully!")
 
-# Decorators for authentication
+app.register_blueprint(auth_bp)
+
+
+# Sprint 1 Decorators (DEPRECATED - kept for backward compatibility with old Sprint 1 routes)
+# New routes should use decorators from blueprints.auth (require_smc, require_team_manager, login_required)
 def require_smc_login(f):
+    """DEPRECATED: Use require_smc from blueprints.auth instead"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Support new auth blueprint session format (role='smc')
+        if session.get('role') == 'smc':
+            return f(*args, **kwargs)
+        # Support old Sprint 1 session format (user_type='smc')
         if 'username' not in session or session.get('user_type') != 'smc':
             flash('Please log in as SMC to access this page.', 'error')
             return redirect(url_for('smc_login'))
@@ -45,21 +54,27 @@ def require_smc_login(f):
     return decorated_function
 
 def require_team_login(f):
+    """DEPRECATED: Use require_team_manager from blueprints.auth instead"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Support new auth blueprint session format (role='team_manager')
+        if session.get('role') == 'team_manager':
+            # Map user_id to team_id for backward compatibility with old routes
+            if 'user_id' in session and 'team_id' not in session:
+                session['team_id'] = session['user_id']
+            return f(*args, **kwargs)
+        # Support old Sprint 1 session format (user_type='team')
         if 'team_id' not in session or session.get('user_type') != 'team':
             flash('Please log in as Team to access this page.', 'error')
             return redirect(url_for('team_login'))
         return f(*args, **kwargs)
     return decorated_function
 
-
-# Routes
+# Sprint 1 Routes (Keep for now, will migrate in Stage 2)
 
 @app.route('/')
 def index():
     """Home page with login options"""
-    # Get some basic stats for display
     tournament = get_default_tournament()
     total_teams = Team.query.filter_by(is_active=True).count()
     upcoming_matches = Match.query.filter(
@@ -74,13 +89,13 @@ def index():
 
 @app.route('/login-smc', methods=['GET', 'POST'])
 def smc_login():
-    """SMC login"""
+    """Sprint 1: SMC login (old route - will be replaced by /auth/login)"""
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         
         user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
+        if user and user.check_password(password) and user.role == 'smc':
             session['user_type'] = 'smc'
             session['username'] = user.username
             flash('Login successful!', 'success')
@@ -92,7 +107,7 @@ def smc_login():
 
 @app.route('/login-team', methods=['GET', 'POST'])
 def team_login():
-    """Team login"""
+    """Sprint 1: Team login (old route - will be replaced by /auth/login)"""
     if request.method == 'POST':
         team_id = request.form['team_id']
         password = request.form['password']
@@ -116,7 +131,7 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
-# SMC Routes
+# SMC Routes (Sprint 1 - moved to blueprints in Stage 2)
 
 @app.route('/smc-dashboard')
 @require_smc_login
@@ -124,7 +139,6 @@ def smc_dashboard():
     """SMC dashboard"""
     tournament = get_default_tournament()
     
-    # Get statistics
     stats = {
         'total_teams': Team.query.filter_by(is_active=True).count(),
         'total_players': Player.query.filter_by(is_active=True).count(),
@@ -135,10 +149,8 @@ def smc_dashboard():
         'completed_matches': Match.query.filter_by(status='completed').count()
     }
     
-    # Get recent teams
     tournament_teams = Team.query.filter_by(is_active=True).order_by(Team.created_at.desc()).all()
     
-    # Get upcoming matches
     upcoming_matches = Match.query.filter(
         Match.status == 'scheduled',
         Match.date >= date.today()
@@ -172,7 +184,6 @@ def register_team():
                 flash('Team ID is required!', 'error')
                 return redirect(url_for('register_team'))
             
-            # Check for duplicates using the stored variables
             existing_team_id = Team.query.filter_by(team_id=team_id).first()
             if existing_team_id:
                 flash('A team with this Team ID already exists!', 'error')
@@ -189,7 +200,6 @@ def register_team():
             if existing_team_name:
                 flash('A team with this name already exists in the tournament!', 'error')
                 return redirect(url_for('register_team'))
-            
 
             if not department:
                 flash('Department is required!', 'error')
@@ -203,7 +213,7 @@ def register_team():
                 flash('Password is required!', 'error')
                 return redirect(url_for('register_team'))
 
-            
+           
 
 
 
@@ -219,12 +229,11 @@ def register_team():
             team.set_password(password)
 
             db.session.add(team)
-            db.session.flush()  # Get team.id
+            db.session.flush()
             
-            
-            # Add players if provided
+            # Add players
             players_added = 0
-            while True:    # Unbound number of players can be added
+            while True:
                 i = players_added + 1
                 name = request.form.get(f'player_{i}_name', '').strip()
                 if name:
@@ -252,17 +261,14 @@ def register_team():
     
     return render_template('register-team.html')
 
-
 @app.route('/schedule-matches', methods=['GET', 'POST'])
 @require_smc_login
 def schedule_matches():
     """UC_03: Schedule Adding"""
-
     tournament = get_default_tournament()
 
     if request.method == 'POST':
         try:
-            # Get team names before creating the match for better error handling
             team1 = Team.query.get(request.form['team1_id'])
             team2 = Team.query.get(request.form['team2_id'])
             
@@ -272,19 +278,17 @@ def schedule_matches():
             
             match = Match(
                 tournament_id=tournament.id,
-                team1_id=team1.team_id,  # Use team_id (string) instead of id (integer)
-                team2_id=team2.team_id,  # Use team_id (string) instead of id (integer)
+                team1_id=team1.team_id,
+                team2_id=team2.team_id,
                 date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
                 time=datetime.strptime(request.form['time'], '%H:%M').time(),
                 venue=request.form['venue']
             )
             
-            # Basic validation
             if team1.team_id == team2.team_id:
                 flash('A team cannot play against itself!', 'error')
                 return redirect(url_for('schedule_matches'))
             
-            # Match date must be within tournament period
             if match.date < tournament.start_date or match.date > tournament.end_date:
                 flash(f'Match date must be between {tournament.start_date} and {tournament.end_date}', 'error')
                 return redirect(url_for('schedule_matches'))
@@ -304,7 +308,6 @@ def schedule_matches():
                 flash(f'Venue "{match.venue}" is already booked at {match.time} on {match.date}', 'error')
                 return redirect(url_for('schedule_matches'))
             
-            # Team Conflict Check - Check if either team already has a match at the same time
             existing_team_match = Match.query.filter(
                 db.or_(
                     db.and_(Match.team1_id == match.team1_id, Match.date == match.date, Match.time == match.time),
@@ -337,12 +340,11 @@ def schedule_matches():
     all_matches = Match.query.order_by(Match.date, Match.time).all()
     
     # Separate upcoming and completed
-    today = date.today()
+    
     now = datetime.now()
     today = date.today()
     upcoming_matches = [m for m in all_matches if m.is_upcoming]
     completed_matches = [m for m in all_matches if datetime.combine(m.date, m.time) < datetime.now()]
-
 
     return render_template('schedule-matches.html',
                            teams=active_teams,
@@ -547,5 +549,6 @@ def public_view():
                          upcoming_matches=upcoming_matches,
                          completed_matches=completed_matches)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app.run(debug=True, port=5000)

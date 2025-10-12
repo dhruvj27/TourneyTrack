@@ -13,7 +13,7 @@ def flask_app():
     
     with app.app_context():
         db.create_all()
-        # Initialize default data
+        # Initialize default data (creates default admin user and tournament)
         from models import init_default_data
         init_default_data()
         yield app
@@ -34,6 +34,26 @@ def db_session(flask_app):
 
 
 @pytest.fixture
+def smc_user(db_session):
+    """Create a test SMC user (Stage 1 - new auth)"""
+    user = User(username='test_smc', email='smc@test.com', role='smc')
+    user.set_password('Test@123')  # Meets validation: 8 chars, upper, lower, digit, special
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
+def team_manager_user(db_session):
+    """Create a test team manager user (Stage 1 - new auth)"""
+    user = User(username='test_manager', email='manager@test.com', role='team_manager')
+    user.set_password('Manager@123')  # Meets validation rules
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+@pytest.fixture
 def tournament(db_session):
     """Create a test tournament"""
     tournament = Tournament(
@@ -50,7 +70,7 @@ def tournament(db_session):
 
 @pytest.fixture
 def team(db_session, tournament):
-    """Create a test team"""
+    """Create a test team (Sprint 1 - SMC-created, has password)"""
     team = Team(
         team_id='TEST001',
         name='Test Team',
@@ -59,7 +79,7 @@ def team(db_session, tournament):
         manager_contact='9876543210',
         tournament_id=tournament.id
     )
-    team.set_password('team_password')
+    team.set_password('Team@123')  # Updated password
     db_session.add(team)
     db_session.commit()
     return team
@@ -67,7 +87,7 @@ def team(db_session, tournament):
 
 @pytest.fixture
 def team2(db_session, tournament):
-    """Create a second test team"""
+    """Create a second test team (Sprint 1 - SMC-created, has password)"""
     team = Team(
         team_id='TEST002',
         name='Second Team',
@@ -76,7 +96,7 @@ def team2(db_session, tournament):
         manager_contact='1234567890',
         tournament_id=tournament.id
     )
-    team.set_password('team2_password')
+    team.set_password('Team2@123')  # Updated password
     db_session.add(team)
     db_session.commit()
     return team
@@ -130,3 +150,23 @@ def past_match(db_session, tournament, team, team2):
     db_session.add(match)
     db_session.commit()
     return match
+
+
+@pytest.fixture
+def authenticated_smc(client, smc_user):
+    """Login as SMC via new auth blueprint and return client"""
+    client.post('/auth/login', data={
+        'username': 'test_smc',
+        'password': 'Test@123'
+    })
+    return client
+
+
+@pytest.fixture
+def authenticated_team_manager(client, team_manager_user):
+    """Login as team manager via new auth blueprint and return client"""
+    client.post('/auth/login', data={
+        'username': 'test_manager',
+        'password': 'Manager@123'
+    })
+    return client

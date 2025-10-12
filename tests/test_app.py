@@ -80,7 +80,7 @@ class TestTeamLoginRoute:
         """Test successful team login"""
         response = client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         assert response.status_code == 302
@@ -108,7 +108,7 @@ class TestTeamLoginRoute:
         """Test team login sets session variables correctly"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/team-dashboard')
@@ -135,7 +135,7 @@ class TestLogoutRoute:
         """Test logout clears team session"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/logout', follow_redirects=True)
@@ -157,7 +157,7 @@ class TestSMCDashboard:
         """Test SMC dashboard rejects team login"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/smc-dashboard')
@@ -196,7 +196,7 @@ class TestRegisterTeamRoute:
         """Test team registration rejects team login"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/register-team')
@@ -225,7 +225,7 @@ class TestRegisterTeamRoute:
             'department': 'CSE',
             'manager_name': 'Manager Name',
             'manager_contact': '9876543210',
-            'password': 'team_pass'
+            'password': 'Team@123'
         })
         
         assert response.status_code == 302
@@ -247,7 +247,7 @@ class TestRegisterTeamRoute:
             'department': 'CSE',
             'manager_name': 'Manager',
             'manager_contact': '9876543210',
-            'password': 'team_pass',
+            'password': 'Team@123',
             'player_1_name': 'Player 1',
             'player_1_roll': '101',
             'player_1_dept': 'CSE',
@@ -331,7 +331,7 @@ class TestScheduleMatchesRoute:
         """Test schedule matches rejects team login"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/schedule-matches')
@@ -486,7 +486,7 @@ class TestAddResultsRoute:
         """Test add results rejects team login"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/add-results')
@@ -606,7 +606,7 @@ class TestTeamDashboard:
         """Test team dashboard shows team information"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/team-dashboard')
@@ -628,7 +628,7 @@ class TestTeamDashboard:
         
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/team-dashboard')
@@ -653,7 +653,7 @@ class TestTeamDashboard:
         
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/team-dashboard')
@@ -682,7 +682,7 @@ class TestUpdateProfileRoute:
         """Test profile update form loads"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.get('/update-profile')
@@ -692,7 +692,7 @@ class TestUpdateProfileRoute:
         """Test updating team details"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.post('/update-profile', data={
@@ -711,7 +711,7 @@ class TestUpdateProfileRoute:
         """Test adding player to team"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.post('/update-profile', data={
@@ -731,7 +731,7 @@ class TestUpdateProfileRoute:
         """Test updating existing player details"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.post('/update-profile', data={
@@ -750,7 +750,7 @@ class TestUpdateProfileRoute:
         """Test removing player from team"""
         client.post('/login-team', data={
             'team_id': team.team_id,
-            'password': 'team_password'
+            'password': 'Team@123'
         })
         
         response = client.post('/update-profile', data={

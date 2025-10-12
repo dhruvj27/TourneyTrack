@@ -1,6 +1,5 @@
 """
-Unit tests for database models - testing model methods, properties, validation logic
-Tests Sprint 1 implementations only
+Unit tests for database models 
 """
 
 import pytest
@@ -9,55 +8,121 @@ from datetime import date, time, timedelta
 
 
 class TestUserModel:
-    """Test User model - password hashing and authentication"""
+    """Test User model"""
 
     def test_user_creation(self, db_session):
         """Test basic user creation"""
-        user = User(username='testuser', role='smc')
-        user.set_password('password123')
+        user = User(username='testuser', email='test@test.com', role='smc')
+        user.set_password('Test@123')
         db_session.add(user)
         db_session.commit()
         
         assert user.id is not None
         assert user.username == 'testuser'
+        assert user.email == 'test@test.com'
         assert user.role == 'smc'
+
+    def test_user_email_required(self, db_session):
+        """Test user requires email field"""
+        user = User(username='testuser', role='smc')
+        user.set_password('Test@123')
+        # Should raise error when committing without email
+        db_session.add(user)
+        with pytest.raises(Exception):
+            db_session.commit()
+
+    def test_user_role_required(self, db_session):
+        """Test user requires role field"""
+        user = User(username='testuser', email='test@test.com')
+        user.set_password('Test@123')
+        # Should raise error when committing without role
+        db_session.add(user)
+        with pytest.raises(Exception):
+            db_session.commit()
 
     def test_password_hashing(self):
         """Test password is hashed, not stored in plaintext"""
-        user = User(username='test', role='smc')
-        user.set_password('mypassword')
+        user = User(username='test', email='test@test.com', role='smc')
+        user.set_password('Test@123')
         
         # Password should not be plaintext
-        assert user.password_hash != 'mypassword'
+        assert user.password_hash != 'Test@123'
         # Hash should be reasonably long
         assert len(user.password_hash) > 50
 
     def test_check_password_correct(self):
         """Test check_password returns True for correct password"""
-        user = User(username='test', role='smc')
-        user.set_password('correctpassword')
+        user = User(username='test', email='test@test.com', role='smc')
+        user.set_password('Test@123')
         
-        assert user.check_password('correctpassword') is True
+        assert user.check_password('Test@123') is True
 
     def test_check_password_incorrect(self):
         """Test check_password returns False for incorrect password"""
-        user = User(username='test', role='smc')
-        user.set_password('correctpassword')
+        user = User(username='test', email='test@test.com', role='smc')
+        user.set_password('Test@123')
         
-        assert user.check_password('wrongpassword') is False
+        assert user.check_password('Wrong@123') is False
 
     def test_user_default_creation_time(self, db_session):
         """Test user creation timestamp is set"""
-        user = User(username='testuser', role='smc')
-        user.set_password('password123')
+        user = User(username='testuser', email='test@test.com', role='smc')
+        user.set_password('Test@123')
         db_session.add(user)
         db_session.commit()
         
         assert user.created_at is not None
 
+    def test_validate_format_valid(self):
+        """Test validate_format accepts valid data"""
+        errors = User.validate_format(
+            username='validuser',
+            email='valid@test.com',
+            password='Valid@123',
+            role='smc'
+        )
+        
+        assert errors == []
+
+    def test_validate_format_short_username(self):
+        """Test validate_format rejects short username"""
+        errors = User.validate_format(
+            username='ab',
+            email='test@test.com',
+            password='Test@123',
+            role='smc'
+        )
+        
+        assert len(errors) > 0
+        assert any('Username must be at least 3 characters' in e for e in errors)
+
+    def test_validate_format_weak_password(self):
+        """Test validate_format rejects weak password"""
+        errors = User.validate_format(
+            username='user',
+            email='test@test.com',
+            password='weak',  # Too short, no complexity
+            role='smc'
+        )
+        
+        assert len(errors) > 0
+        assert any('at least 8 characters' in e.lower() for e in errors)
+
+    def test_validate_format_invalid_email(self):
+        """Test validate_format rejects invalid email"""
+        errors = User.validate_format(
+            username='user',
+            email='notanemail',
+            password='Test@123',
+            role='smc'
+        )
+        
+        assert len(errors) > 0
+        assert any('email' in e.lower() for e in errors)
+
 
 class TestTournamentModel:
-    """Test Tournament model - creation, relationships, properties"""
+    """Test Tournament model - Sprint 1 functionality"""
 
     def test_tournament_creation(self, db_session):
         """Test basic tournament creation"""
@@ -110,7 +175,7 @@ class TestTournamentModel:
             manager_name='Manager 1',
             tournament_id=tournament.id
         )
-        team1.set_password('pass1')
+        team1.set_password('Team@123')
         team2 = Team(
             team_id='T002',
             name='Team 2',
@@ -118,7 +183,7 @@ class TestTournamentModel:
             manager_name='Manager 2',
             tournament_id=tournament.id
         )
-        team2.set_password('pass2')
+        team2.set_password('Team@123')
         
         db_session.add_all([team1, team2])
         db_session.commit()
@@ -163,7 +228,7 @@ class TestTournamentModel:
 
 
 class TestTeamModel:
-    """Test Team model - creation, relationships, methods"""
+    """Test Team model - Sprint 1 functionality"""
 
     def test_team_creation(self, db_session, tournament):
         """Test basic team creation"""
@@ -175,7 +240,7 @@ class TestTeamModel:
             manager_contact='9876543210',
             tournament_id=tournament.id
         )
-        team.set_password('password123')
+        team.set_password('Team@123')
         db_session.add(team)
         db_session.commit()
         
@@ -192,7 +257,7 @@ class TestTeamModel:
             manager_name='Manager',
             tournament_id=tournament.id
         )
-        team.set_password('password123')
+        team.set_password('Team@123')
         db_session.add(team)
         db_session.commit()
         
@@ -207,11 +272,11 @@ class TestTeamModel:
             manager_name='Manager',
             tournament_id=tournament.id
         )
-        team.set_password('team_password')
+        team.set_password('Team@123')
         db_session.add(team)
         db_session.commit()
         
-        assert team.password_hash != 'team_password'
+        assert team.password_hash != 'Team@123'
         assert len(team.password_hash) > 50
 
     def test_team_check_password(self, db_session, tournament):
@@ -223,12 +288,12 @@ class TestTeamModel:
             manager_name='Manager',
             tournament_id=tournament.id
         )
-        team.set_password('mypassword')
+        team.set_password('Team@123')
         db_session.add(team)
         db_session.commit()
         
-        assert team.check_password('mypassword') is True
-        assert team.check_password('wrongpassword') is False
+        assert team.check_password('Team@123') is True
+        assert team.check_password('Wrong@123') is False
 
     def test_team_players_relationship(self, db_session, team):
         """Test team can have multiple players"""
@@ -389,7 +454,7 @@ class TestTeamModel:
             manager_name='Manager',
             tournament_id=tournament.id
         )
-        team.set_password('password123')
+        team.set_password('Team@123')
         db_session.add(team)
         db_session.commit()
         
@@ -636,3 +701,38 @@ class TestMatchModel:
     def test_match_creation_timestamp(self, db_session, match):
         """Test match creation timestamp is set"""
         assert match.created_at is not None
+
+
+class TestDefaultData:
+    """Test default data initialization - Stage 1 updates"""
+
+    def test_default_admin_has_email(self, db_session):
+        """Test default admin user has email field (Stage 1)"""
+        admin = User.query.filter_by(username='admin').first()
+        
+        assert admin is not None
+        assert admin.email is not None
+        assert admin.email == 'admin@tourneytrack.local'
+
+    def test_default_admin_has_role(self, db_session):
+        """Test default admin user has SMC role (Stage 1)"""
+        admin = User.query.filter_by(username='admin').first()
+        
+        assert admin is not None
+        assert admin.role == 'smc'
+
+    def test_default_admin_password_works(self, db_session):
+        """Test default admin password is correctly set"""
+        admin = User.query.filter_by(username='admin').first()
+        
+        assert admin is not None
+        assert admin.check_password('admin123') is True
+
+    def test_default_tournament_exists(self, db_session):
+        """Test default tournament is created"""
+        tournament = Tournament.query.filter_by(
+            name='Inter-Department Sports Tournament 2025'
+        ).first()
+        
+        assert tournament is not None
+        assert tournament.status == 'active'
