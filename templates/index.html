@@ -4,29 +4,59 @@
   <meta charset="utf-8" />
   <title>TourneyTrackers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Tailwind CDN (simple setup) -->
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- Navbar -->
+  <!-- 🔹 Navbar -->
   <nav class="bg-black">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <span class="text-white text-xl font-semibold">TourneyTrackers</span>
+      <!-- Logo -->
+      <a href="{{ url_for('index') }}" class="text-white text-xl font-semibold hover:text-blue-400 transition">
+        TourneyTrackers
+      </a>
+
+      <!-- Navbar Buttons -->
       <div class="flex items-center gap-2">
-        <a href="{{ url_for('smc_login') }}" class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm">
-          Login as SMC
-        </a>
-        <a href="{{ url_for('team_login') }}" class="inline-flex items-center px-3 py-2 rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm">
-          Login as Team
-        </a>
+        {% if g.current_user %}
+          <!-- Logged in -->
+          {% if g.current_user.role == 'smc' %}
+            <a href="{{ url_for('smc_dashboard') }}" 
+               class="inline-flex items-center px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 text-sm transition">
+              Dashboard
+            </a>
+          {% elif g.current_user.role == 'team_manager' %}
+            <a href="{{ url_for('team_dashboard') }}" 
+               class="inline-flex items-center px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 text-sm transition">
+              Dashboard
+            </a>
+          {% endif %}
+
+          <a href="{{ url_for('auth.logout') }}" 
+             class="inline-flex items-center px-3 py-2 rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm transition">
+            Logout
+          </a>
+
+        {% else %}
+          <!-- Not logged in -->
+          <a href="{{ url_for('auth.register') }}" 
+             class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm transition">
+            Register
+          </a>
+          <a href="{{ url_for('auth.login') }}" 
+             class="inline-flex items-center px-3 py-2 rounded-md bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm transition">
+            Login
+          </a>
+        {% endif %}
       </div>
     </div>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
+  <!-- 🔹 Main Content -->
+  <main class="max-w-6xl mx-auto flex-grow px-4 py-6">
 
-    <!-- Flash messages -->
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="space-y-2 mb-4">
@@ -45,9 +75,9 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Welcome / Tournament -->
+    <!-- Welcome Section -->
     <section class="text-center my-6">
-      <h1 class="text-4xl font-bold">
+      <h1 class="text-4xl font-bold text-gray-900">
         Welcome to
         {% if tournament and tournament.name %}
           {{ tournament.name }}
@@ -62,29 +92,32 @@
       {% endif %}
     </section>
 
-    <!-- Stats -->
+    <!-- Stats Cards -->
     <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
       <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4 text-center">
         <div class="text-gray-500 text-sm">Total Teams</div>
-        <div class="text-4xl font-semibold">{{ total_teams or 0 }}</div>
+        <div class="text-4xl font-semibold text-gray-800">{{ total_teams or 0 }}</div>
       </div>
       <div class="bg-white shadow-sm border border-gray-200 rounded-lg p-4 text-center">
         <div class="text-gray-500 text-sm">Upcoming Matches</div>
-        <div class="text-4xl font-semibold">{{ upcoming_matches or 0 }}</div>
+        <div class="text-4xl font-semibold text-gray-800">{{ upcoming_matches or 0 }}</div>
       </div>
     </section>
 
-    <!-- Bottom CTA -->
-   <a href="{{ url_for('public_view') }}"
-   class="block w-full sm:w-auto text-center px-6 py-3 rounded-lg 
-          bg-emerald-600 text-white font-semibold shadow 
-          hover:bg-emerald-700 hover:shadow-md transition">
-  View Fixtures & Results
-</a>
-
-
+    <!-- Call to Action -->
+    <div class="text-center mt-8">
+      <a href="{{ url_for('public_view') }}"
+         class="inline-block px-8 py-3 rounded-lg bg-emerald-600 text-white font-semibold shadow hover:bg-emerald-700 hover:shadow-md transition">
+        View Fixtures & Results
+      </a>
+    </div>
 
   </main>
+
+  <!-- 🔹 Footer -->
+  <footer class="bg-gray-900 text-gray-400 text-center text-sm py-4 border-t border-gray-800">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
 
 </body>
 </html>
