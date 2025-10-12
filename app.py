@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Tournament, Team, Player, Match, init_default_data, get_default_tournament
+from models import db, User, Tournament, Team, Player, Match, TournamentTeam, init_default_data, get_default_tournament
 from datetime import datetime, timedelta, date
 from functools import wraps
 import os
 from blueprints.auth import auth_bp
+from blueprints.smc import smc_bp
+
 app = Flask(__name__)
 
 # Configuration
@@ -34,13 +36,14 @@ with app.app_context():
     init_default_data()
     print("Database initialized successfully!")
 
+# Register blueprints
 app.register_blueprint(auth_bp)
+app.register_blueprint(smc_bp)
 
 
 # Sprint 1 Decorators (DEPRECATED - kept for backward compatibility with old Sprint 1 routes)
-# New routes should use decorators from blueprints.auth (require_smc, require_team_manager, login_required)
 def require_smc_login(f):
-    """DEPRECATED: Use require_smc from blueprints.auth instead"""
+    """DEPRECATED: Use require_smc from blueprints.smc instead"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Support new auth blueprint session format (role='smc')
@@ -70,13 +73,17 @@ def require_team_login(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Sprint 1 Routes (Keep for now, will migrate in Stage 2)
+# Sprint 1 Routes (Keep for backward compatibility)
 
 @app.route('/')
 def index():
     """Home page with login options"""
     tournament = get_default_tournament()
+    
+    # Count teams across all tournaments for global stats
     total_teams = Team.query.filter_by(is_active=True).count()
+    
+    # Count upcoming matches across all tournaments
     upcoming_matches = Match.query.filter(
         Match.status == 'scheduled',
         Match.date >= datetime.now().date()
@@ -107,22 +114,9 @@ def smc_login():
 
 @app.route('/login-team', methods=['GET', 'POST'])
 def team_login():
-    """Sprint 1: Team login (old route - will be replaced by /auth/login)"""
-    if request.method == 'POST':
-        team_id = request.form['team_id']
-        password = request.form['password']
-        
-        team = Team.query.filter_by(team_id=team_id).first()
-        if team and team.check_password(password):
-            session['team_id'] = team.team_id
-            session['user_type'] = 'team'
-            session['team_name'] = team.name
-            flash('Login successful!', 'success')
-            return redirect(url_for('team_dashboard'))
-        else:
-            flash('Invalid team credentials!', 'error')
-    
-    return render_template('login-team.html')
+    """Sprint 1: Team login (old route - deprecated, teams no longer have passwords)"""
+    flash('Team login has been updated. Please use the new login system.', 'info')
+    return redirect(url_for('auth.login'))
 
 @app.route('/logout')
 def logout():
@@ -131,27 +125,34 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
-# SMC Routes (Sprint 1 - moved to blueprints in Stage 2)
+# SMC Routes (Sprint 1 - kept for backward compatibility, use smc_bp routes instead)
 
 @app.route('/smc-dashboard')
 @require_smc_login
 def smc_dashboard():
-    """SMC dashboard"""
+    """SMC dashboard - OLD ROUTE (use /smc/dashboard instead)"""
     tournament = get_default_tournament()
     
+    # Get tournament teams through TournamentTeam association
+    tournament_teams_relations = TournamentTeam.query.filter_by(tournament_id=tournament.id).all()
+    tournament_teams = [tt.team for tt in tournament_teams_relations]
+    
     stats = {
-        'total_teams': Team.query.filter_by(is_active=True).count(),
+        'total_teams': len(tournament_teams),
         'total_players': Player.query.filter_by(is_active=True).count(),
         'upcoming_matches': Match.query.filter(
+            Match.tournament_id == tournament.id,
             Match.status == 'scheduled',
             Match.date >= date.today()
         ).count(),
-        'completed_matches': Match.query.filter_by(status='completed').count()
+        'completed_matches': Match.query.filter(
+            Match.tournament_id == tournament.id,
+            Match.status == 'completed'
+        ).count()
     }
     
-    tournament_teams = Team.query.filter_by(is_active=True).order_by(Team.created_at.desc()).all()
-    
     upcoming_matches = Match.query.filter(
+        Match.tournament_id == tournament.id,
         Match.status == 'scheduled',
         Match.date >= date.today()
     ).order_by(Match.date, Match.time).limit(5).all()
@@ -165,21 +166,18 @@ def smc_dashboard():
 @app.route('/register-team', methods=['GET', 'POST'])
 @require_smc_login
 def register_team():
-    """UC_01: Register Player/Team"""
+    """UC_01: Register Player/Team - OLD ROUTE (use /smc/tournament/<id>/register-team instead)"""
     if request.method == 'POST':
         try:        
             tournament = get_default_tournament()
 
-            # Store form data in variables first
             team_name = request.form.get('team_name', '').strip()
             team_id = request.form.get('team_id', '').strip()
             department = request.form.get('department', '').strip()
             manager_name = request.form.get('manager_name', '').strip()
-            password = request.form.get('password', '').strip()
             manager_contact = request.form.get('manager_contact', '').strip()
 
-            # Validate required fields using the stored variables
-            
+            # Validation
             if not team_id:
                 flash('Team ID is required!', 'error')
                 return redirect(url_for('register_team'))
@@ -193,14 +191,6 @@ def register_team():
                 flash('Team name is required!', 'error')
                 return redirect(url_for('register_team'))
 
-            existing_team_name = Team.query.filter_by(
-                name=team_name, 
-                tournament_id=tournament.id
-            ).first()
-            if existing_team_name:
-                flash('A team with this name already exists in the tournament!', 'error')
-                return redirect(url_for('register_team'))
-
             if not department:
                 flash('Department is required!', 'error')
                 return redirect(url_for('register_team'))
@@ -209,27 +199,29 @@ def register_team():
                 flash('Manager name is required!', 'error')
                 return redirect(url_for('register_team'))
 
-            if not password:
-                flash('Password is required!', 'error')
-                return redirect(url_for('register_team'))
+            # Get current user (admin for backward compatibility)
+            current_user = User.query.filter_by(username='admin').first()
 
-           
-
-
-
-            # Create team using the validated variables
+            # Create team
             team = Team(
                 name=team_name,
                 department=department,
                 manager_name=manager_name,
                 manager_contact=manager_contact,
                 team_id=team_id,
-                tournament_id=tournament.id
+                created_by=current_user.id,
+                is_self_managed=False
             )
-            team.set_password(password)
 
             db.session.add(team)
             db.session.flush()
+            
+            # Add team to default tournament
+            tt = TournamentTeam(
+                tournament_id=tournament.id,
+                team_id=team.team_id
+            )
+            db.session.add(tt)
             
             # Add players
             players_added = 0
@@ -264,7 +256,7 @@ def register_team():
 @app.route('/schedule-matches', methods=['GET', 'POST'])
 @require_smc_login
 def schedule_matches():
-    """UC_03: Schedule Adding"""
+    """UC_03: Schedule Adding - OLD ROUTE (use /smc/tournament/<id>/schedule-matches instead)"""
     tournament = get_default_tournament()
 
     if request.method == 'POST':
@@ -276,28 +268,27 @@ def schedule_matches():
                 flash('Invalid team selection!', 'error')
                 return redirect(url_for('schedule_matches'))
             
+            if team1.team_id == team2.team_id:
+                flash('A team cannot play against itself!', 'error')
+                return redirect(url_for('schedule_matches'))
+            
+            match_date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+            match_time = datetime.strptime(request.form['time'], '%H:%M').time()
+            
             match = Match(
                 tournament_id=tournament.id,
                 team1_id=team1.team_id,
                 team2_id=team2.team_id,
-                date=datetime.strptime(request.form['date'], '%Y-%m-%d').date(),
-                time=datetime.strptime(request.form['time'], '%H:%M').time(),
+                date=match_date,
+                time=match_time,
                 venue=request.form['venue']
             )
-            
-            if team1.team_id == team2.team_id:
-                flash('A team cannot play against itself!', 'error')
-                return redirect(url_for('schedule_matches'))
             
             if match.date < tournament.start_date or match.date > tournament.end_date:
                 flash(f'Match date must be between {tournament.start_date} and {tournament.end_date}', 'error')
                 return redirect(url_for('schedule_matches'))
             
-            # if match.date < date.today():
-            #     flash('Cannot schedule matches in the past!', 'error')
-            #     return redirect(url_for('schedule_matches'))
-            
-            # Check for venue conflicts (same venue, date, time)
+            # Check for venue conflicts
             existing_match = Match.query.filter_by(
                 venue=match.venue,
                 date=match.date,
@@ -331,23 +322,18 @@ def schedule_matches():
             db.session.rollback()
             flash(f'Error scheduling match: {str(e)}', 'error')
     
-    
-    # Get active teams for dropdown
-    active_teams = Team.query.filter_by(is_active=True).order_by(Team.name).all()
+    # Get teams from default tournament
+    tournament_teams = tournament.get_teams()
     all_teams = Team.query.all()
 
     # Get all matches
-    all_matches = Match.query.order_by(Match.date, Match.time).all()
+    all_matches = Match.query.filter_by(tournament_id=tournament.id).order_by(Match.date, Match.time).all()
     
-    # Separate upcoming and completed
-    
-    now = datetime.now()
-    today = date.today()
     upcoming_matches = [m for m in all_matches if m.is_upcoming]
     completed_matches = [m for m in all_matches if datetime.combine(m.date, m.time) < datetime.now()]
 
     return render_template('schedule-matches.html',
-                           teams=active_teams,
+                           teams=tournament_teams,
                            tournament=tournament,
                            all_teams=all_teams,
                            upcoming_matches=upcoming_matches,
@@ -356,7 +342,9 @@ def schedule_matches():
 @app.route('/add-results', methods=['GET', 'POST'])
 @require_smc_login
 def add_results():
-    """UC_05: Result Announcements"""
+    """UC_05: Result Announcements - OLD ROUTE (use /smc/tournament/<id>/add-results instead)"""
+    tournament = get_default_tournament()
+    
     if request.method == 'POST':
         try:
             match_id = int(request.form['match_id'])
@@ -383,7 +371,7 @@ def add_results():
                     return redirect(url_for('add_results'))
                 match.winner_id = winner_id
             else:
-                match.winner_id = None  # For draws or no winner scenarios
+                match.winner_id = None
             
             db.session.commit()
             
@@ -394,17 +382,19 @@ def add_results():
             db.session.rollback()
             flash(f'Error updating results: {str(e)}', 'error')
     
-    # Get matches that can have results added (scheduled matches in the past or today)
+    # Get matches that can have results added
     today = date.today()
     pending_matches = Match.query.filter(
+        Match.tournament_id == tournament.id,
         Match.status == 'scheduled',
         Match.date <= today
     ).order_by(Match.date, Match.time).all()
     
     # Get completed matches for display
-    completed_matches = Match.query.filter_by(status='completed').order_by(
-        Match.date.desc(), Match.time.desc()
-    ).limit(10).all()
+    completed_matches = Match.query.filter(
+        Match.tournament_id == tournament.id,
+        Match.status == 'completed'
+    ).order_by(Match.date.desc(), Match.time.desc()).limit(10).all()
 
     # Get all active teams for winner dropdown
     active_teams = Team.query.filter_by(is_active=True).all()
@@ -415,7 +405,7 @@ def add_results():
                      teams=active_teams)
     
     
-# Team Routes
+# Team Routes (Sprint 1 - kept for backward compatibility)
 
 @app.route('/team-dashboard')
 @require_team_login
@@ -428,12 +418,12 @@ def team_dashboard():
         flash('Team not found!', 'error')
         return redirect(url_for('team_login'))
     
-    # Get team statistics using existing methods
+    # Get team statistics
     upcoming_matches = team.get_upcoming_matches()
     completed_matches = team.get_completed_matches()
     record = team.get_match_record()
     
-    # Get active players using the relationship
+    # Get active players
     active_players = [p for p in team.players if p.is_active]
     
     return render_template('team-dashboard.html',
@@ -446,7 +436,7 @@ def team_dashboard():
 @app.route('/update-profile', methods=['GET', 'POST'])
 @require_team_login
 def update_profile():
-    """UC_02: Team/Player's Profile Updation - handles team details AND player management"""
+    """UC_02: Team/Player's Profile Updation"""
     team_id = session['team_id']
     team = Team.query.filter_by(team_id=team_id).first()
     
@@ -459,7 +449,6 @@ def update_profile():
             action = request.form.get('action', 'update_team')
             
             if action == 'update_team':
-                # Update team information
                 if request.form.get('manager_name'):
                     team.manager_name = request.form['manager_name'].strip()
                 if request.form.get('manager_contact'):
@@ -469,7 +458,6 @@ def update_profile():
                 flash('Team details updated successfully!', 'success')
                 
             elif action == 'update_players':
-                # Update existing players
                 active_players = [p for p in team.players if p.is_active]
                 for player in active_players:
                     player_prefix = f'player_{player.id}_'
@@ -489,7 +477,6 @@ def update_profile():
                 flash('Player details updated successfully!', 'success')
                 
             elif action == 'add_player':
-                # Add new player
                 player = Player(
                     name=request.form['new_player_name'].strip(),
                     roll_number=request.form.get('new_player_roll', ''),
@@ -504,7 +491,6 @@ def update_profile():
                 flash('Player added successfully!', 'success')
                 
             elif action == 'remove_player':
-                # Remove player (set inactive)
                 player_id = int(request.form['player_id'])
                 player = Player.query.filter_by(id=player_id, team_id=team_id).first()
                 
@@ -521,12 +507,12 @@ def update_profile():
             db.session.rollback()
             flash(f'Error updating profile: {str(e)}', 'error')
     
-    # GET request - display form with current data
+    # GET request - display form
     active_players = [p for p in team.players if p.is_active]
     
     return render_template('update-profile.html', team=team, players=active_players)
 
-# Public Routes (for viewers)
+# Public Routes
 
 @app.route('/public-view')
 def public_view():
@@ -535,14 +521,16 @@ def public_view():
     
     # Get upcoming matches
     upcoming_matches = Match.query.filter(
+        Match.tournament_id == tournament.id,
         Match.status == 'scheduled',
         Match.date >= date.today()
     ).order_by(Match.date, Match.time).all()
     
     # Get completed matches
-    completed_matches = Match.query.filter_by(status='completed').order_by(
-        Match.date.desc(), Match.time.desc()
-    ).limit(10).all()  # Show last 10 results
+    completed_matches = Match.query.filter(
+        Match.tournament_id == tournament.id,
+        Match.status == 'completed'
+    ).order_by(Match.date.desc(), Match.time.desc()).limit(10).all()
     
     return render_template('public-view.html',
                          tournament=tournament,
