@@ -53,7 +53,7 @@ def dashboard():
         'total_matches': total_matches
     }
     
-    return render_template('smc/dashboard.html',
+    return render_template('smc-dashboard.html',
                          tournaments=my_tournaments,
                          stats=stats)
 
@@ -248,7 +248,7 @@ def register_team(tournament_id):
             db.session.rollback()
             flash(f'Error registering team: {str(e)}', 'error')
     
-    return render_template('smc/register-team.html', tournament=tournament)
+    return render_template('register-team.html', tournament=tournament)
 
 
 @smc_bp.route('/tournament/<int:tournament_id>/schedule-matches', methods=['GET', 'POST'])
@@ -339,7 +339,7 @@ def schedule_matches(tournament_id):
     upcoming_matches = [m for m in all_matches if m.is_upcoming]
     completed_matches = [m for m in all_matches if m.status == 'completed']
 
-    return render_template('smc/schedule-matches.html',
+    return render_template('schedule-matches.html',
                            tournament=tournament,
                            teams=tournament_teams,
                            upcoming_matches=upcoming_matches,
@@ -412,7 +412,7 @@ def add_results(tournament_id):
     # Get teams for winner dropdown
     teams = tournament.get_teams()
 
-    return render_template('smc/add-results.html',
+    return render_template('add-results.html',
                          tournament=tournament,
                          pending_matches=pending_matches,
                          completed_matches=completed_matches,

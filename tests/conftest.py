@@ -1,6 +1,6 @@
 import pytest
 from app import app
-from models import db, User, Tournament, Team, Player, Match
+from models import db, User, Tournament, Team, Player, Match, TournamentTeam
 from datetime import date, time, timedelta
 
 
@@ -10,6 +10,7 @@ def flask_app():
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['WTF_CSRF_ENABLED'] = False
+    app.config['SECRET_KEY'] = 'test-secret-key'
     
     with app.app_context():
         db.create_all()
@@ -34,139 +35,197 @@ def db_session(flask_app):
 
 
 @pytest.fixture
-def smc_user(db_session):
+def smc_user(flask_app):
     """Create a test SMC user (Stage 1 - new auth)"""
-    user = User(username='test_smc', email='smc@test.com', role='smc')
-    user.set_password('Test@123')  # Meets validation: 8 chars, upper, lower, digit, special
-    db_session.add(user)
-    db_session.commit()
-    return user
+    with flask_app.app_context():
+        user = User(username='test_smc', email='smc@test.com', role='smc')
+        user.set_password('Test@123')
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+    
+    # Return a function that fetches the user in the current context
+    def get_user():
+        return User.query.get(user_id)
+    
+    # But also return the user directly for immediate use
+    with flask_app.app_context():
+        return User.query.get(user_id)
 
 
 @pytest.fixture
-def team_manager_user(db_session):
+def team_manager_user(flask_app):
     """Create a test team manager user (Stage 1 - new auth)"""
-    user = User(username='test_manager', email='manager@test.com', role='team_manager')
-    user.set_password('Manager@123')  # Meets validation rules
-    db_session.add(user)
-    db_session.commit()
-    return user
+    with flask_app.app_context():
+        user = User(username='test_manager', email='manager@test.com', role='team_manager')
+        user.set_password('Manager@123')
+        db.session.add(user)
+        db.session.commit()
+        user_id = user.id
+    
+    with flask_app.app_context():
+        return User.query.get(user_id)
 
 
 @pytest.fixture
-def tournament(db_session):
-    """Create a test tournament"""
-    tournament = Tournament(
-        name='Test Tournament 2025',
-        start_date=date.today() - timedelta(days=5),
-        end_date=date.today() + timedelta(days=30),
-        status='active',
-        rules='Test tournament rules'
-    )
-    db_session.add(tournament)
-    db_session.commit()
-    return tournament
+def tournament(flask_app, smc_user):
+    """Create a test tournament (Stage 2 - requires created_by)"""
+    with flask_app.app_context():
+        tournament = Tournament(
+            name='Test Tournament',
+            start_date=date.today() - timedelta(days=5),
+            end_date=date.today() + timedelta(days=30),
+            status='active',
+            rules='Test tournament rules',
+            created_by=smc_user.id
+        )
+        db.session.add(tournament)
+        db.session.commit()
+        tournament_id = tournament.id
+    
+    with flask_app.app_context():
+        return Tournament.query.get(tournament_id)
 
 
 @pytest.fixture
-def team(db_session, tournament):
-    """Create a test team (Sprint 1 - SMC-created, has password)"""
-    team = Team(
-        team_id='TEST001',
-        name='Test Team',
-        department='CSE',
-        manager_name='John Doe',
-        manager_contact='9876543210',
-        tournament_id=tournament.id
-    )
-    team.set_password('Team@123')  # Updated password
-    db_session.add(team)
-    db_session.commit()
-    return team
+def tournament2(flask_app, smc_user):
+    """Create a second test tournament (Stage 2)"""
+    with flask_app.app_context():
+        tournament = Tournament(
+            name='Test Tournament 2',
+            start_date=date.today() - timedelta(days=5),
+            end_date=date.today() + timedelta(days=30),
+            status='active',
+            rules='Test tournament 2 rules',
+            created_by=smc_user.id
+        )
+        db.session.add(tournament)
+        db.session.commit()
+        tournament_id = tournament.id
+    
+    with flask_app.app_context():
+        return Tournament.query.get(tournament_id)
 
 
 @pytest.fixture
-def team2(db_session, tournament):
-    """Create a second test team (Sprint 1 - SMC-created, has password)"""
-    team = Team(
-        team_id='TEST002',
-        name='Second Team',
-        department='ECE',
-        manager_name='Jane Doe',
-        manager_contact='1234567890',
-        tournament_id=tournament.id
-    )
-    team.set_password('Team2@123')  # Updated password
-    db_session.add(team)
-    db_session.commit()
-    return team
+def team(flask_app, smc_user):
+    """Create a test team (Stage 2 - no password, no tournament_id, has created_by)"""
+    with flask_app.app_context():
+        team = Team(
+            team_id='TEST001',
+            name='Test Team',
+            department='CSE',
+            manager_name='John Doe',
+            manager_contact='9876543210',
+            created_by=smc_user.id,
+            is_self_managed=False
+        )
+        db.session.add(team)
+        db.session.commit()
+        team_id = team.team_id
+    
+    with flask_app.app_context():
+        return Team.query.filter_by(team_id=team_id).first()
 
 
 @pytest.fixture
-def player(db_session, team):
+def team2(flask_app, smc_user):
+    """Create a second test team (Stage 2 - no password, no tournament_id)"""
+    with flask_app.app_context():
+        team = Team(
+            team_id='TEST002',
+            name='Second Team',
+            department='ECE',
+            manager_name='Jane Doe',
+            manager_contact='1234567890',
+            created_by=smc_user.id,
+            is_self_managed=False
+        )
+        db.session.add(team)
+        db.session.commit()
+        team_id = team.team_id
+    
+    with flask_app.app_context():
+        return Team.query.filter_by(team_id=team_id).first()
+
+
+@pytest.fixture
+def player(flask_app, team):
     """Create a test player"""
-    player = Player(
-        name='Test Player',
-        roll_number=12345,
-        contact='9876543210',
-        department='CSE',
-        year='3',
-        team_id=team.team_id
-    )
-    db_session.add(player)
-    db_session.commit()
-    return player
+    with flask_app.app_context():
+        player = Player(
+            name='Test Player',
+            roll_number=12345,
+            contact='9876543210',
+            department='CSE',
+            year='3',
+            team_id=team.team_id
+        )
+        db.session.add(player)
+        db.session.commit()
+        player_id = player.id
+    
+    with flask_app.app_context():
+        return Player.query.get(player_id)
 
 
 @pytest.fixture
-def match(db_session, tournament, team, team2):
+def match(flask_app, tournament, team, team2):
     """Create a test match"""
-    match = Match(
-        tournament_id=tournament.id,
-        team1_id=team.team_id,
-        team2_id=team2.team_id,
-        date=date.today() + timedelta(days=5),
-        time=time(14, 0),
-        venue='Main Field',
-        status='scheduled'
-    )
-    db_session.add(match)
-    db_session.commit()
-    return match
+    with flask_app.app_context():
+        match = Match(
+            tournament_id=tournament.id,
+            team1_id=team.team_id,
+            team2_id=team2.team_id,
+            date=date.today() + timedelta(days=5),
+            time=time(14, 0),
+            venue='Main Field',
+            status='scheduled'
+        )
+        db.session.add(match)
+        db.session.commit()
+        match_id = match.id
+    
+    with flask_app.app_context():
+        return Match.query.get(match_id)
 
 
 @pytest.fixture
-def past_match(db_session, tournament, team, team2):
+def past_match(flask_app, tournament, team, team2):
     """Create a past match for testing result entry"""
-    match = Match(
-        tournament_id=tournament.id,
-        team1_id=team.team_id,
-        team2_id=team2.team_id,
-        date=date.today() - timedelta(days=1),
-        time=time(14, 0),
-        venue='Past Field',
-        status='scheduled'
-    )
-    db_session.add(match)
-    db_session.commit()
-    return match
+    with flask_app.app_context():
+        match = Match(
+            tournament_id=tournament.id,
+            team1_id=team.team_id,
+            team2_id=team2.team_id,
+            date=date.today() - timedelta(days=1),
+            time=time(14, 0),
+            venue='Past Field',
+            status='scheduled'
+        )
+        db.session.add(match)
+        db.session.commit()
+        match_id = match.id
+    
+    with flask_app.app_context():
+        return Match.query.get(match_id)
 
 
 @pytest.fixture
 def authenticated_smc(client, smc_user):
-    """Login as SMC via new auth blueprint and return client"""
-    client.post('/auth/login', data={
-        'username': 'test_smc',
-        'password': 'Test@123'
-    })
+    """Login as SMC via new auth blueprint and return authenticated client"""
+    with client.session_transaction() as sess:
+        sess['user_id'] = smc_user.id
+        sess['username'] = smc_user.username
+        sess['role'] = 'smc'
     return client
 
 
 @pytest.fixture
 def authenticated_team_manager(client, team_manager_user):
-    """Login as team manager via new auth blueprint and return client"""
-    client.post('/auth/login', data={
-        'username': 'test_manager',
-        'password': 'Manager@123'
-    })
+    """Login as team manager via new auth blueprint and return authenticated client"""
+    with client.session_transaction() as sess:
+        sess['user_id'] = team_manager_user.id
+        sess['username'] = team_manager_user.username
+        sess['role'] = 'team_manager'
     return client
