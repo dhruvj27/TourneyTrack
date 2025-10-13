@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, g
-from models import db, User
+from models import Team, db, User
 from functools import wraps
 from datetime import datetime
 import pytz
@@ -142,11 +142,15 @@ def login():
             
             # Route based on role
             if user.role == 'smc':
-                return redirect(url_for('smc_dashboard')) # Sprint 1 Routes, to be updated
+                return redirect(url_for('smc.dashboard'))
+            elif user.role == 'team_manager':
+                team = Team.query.filter_by(created_by=user.id, is_active=True).first()
+            if team:
+                return redirect(url_for('team.dashboard', team_id=team.team_id))
             else:
-                return redirect(url_for('team_dashboard')) # Sprint 1 Routes, to be updated
-        else:
-            flash('Invalid username or password.', 'error')
+                flash("No team found. Please create one to continue.", "info")
+            return redirect(url_for('team.create_team'))
+
     
     return render_template('auth/login.html')
 

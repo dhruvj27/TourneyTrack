@@ -1,71 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Teams - TourneyTrack</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Teams – TourneyTrackers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <nav>
-        <div class="nav-container">
-            <h1>TourneyTrack</h1>
-            <div class="nav-links">
-                <span>Team Manager: {{ g.current_user.username }}</span>
-                <a href="{{ url_for('team.my_teams') }}" class="active">My Teams</a>
-                <a href="{{ url_for('team.browse_tournaments') }}">Browse Tournaments</a>
-                <a href="{{ url_for('auth.logout') }}">Logout</a>
-            </div>
-        </div>
-    </nav>
 
-    <div class="container">
-        <div class="header-row">
-            <h2>My Teams</h2>
-            <a href="{{ url_for('team.create_team') }}" class="btn-primary">Create New Team</a>
-        </div>
+<body class="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex flex-col">
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if team_data %}
-            <div class="teams-grid">
-                {% for data in team_data %}
-                <div class="team-card">
-                    <h3>{{ data.team.name }}</h3>
-                    <p><strong>Team ID:</strong> {{ data.team.team_id }}</p>
-                    <p><strong>Department:</strong> {{ data.team.department }}</p>
-                    <p><strong>Manager:</strong> {{ data.team.manager_name }}</p>
-                    
-                    <div class="team-stats">
-                        <div class="stat">
-                            <span class="stat-label">Players</span>
-                            <span class="stat-value">{{ data.player_count }}</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Tournaments</span>
-                            <span class="stat-value">{{ data.tournament_count }}</span>
-                        </div>
-                    </div>
-
-                    <div class="team-actions">
-                        <a href="{{ url_for('team.dashboard', team_id=data.team.team_id) }}" class="btn-primary">View Dashboard</a>
-                        <a href="{{ url_for('team.update_profile', team_id=data.team.team_id) }}" class="btn-secondary">Edit Profile</a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-state">
-                <p>You haven't created any teams yet.</p>
-                <a href="{{ url_for('team.create_team') }}" class="btn-primary">Create Your First Team</a>
-            </div>
-        {% endif %}
+  <!-- 🔹 Navbar -->
+  <nav class="bg-black/60 backdrop-blur border-b border-gray-700">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+      <a href="{{ url_for('team.my_teams') }}" class="text-2xl font-bold tracking-wide text-white hover:text-blue-400 transition">
+        TourneyTrackers
+      </a>
+      <div class="flex items-center gap-4 text-sm flex-wrap justify-end">
+        <span class="text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('team.my_teams') }}" class="text-blue-400 font-semibold underline">My Teams</a>
+        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-400 transition">Browse Tournaments</a>
+        <a href="{{ url_for('auth.logout') }}" class="hover:text-red-400 transition">Logout</a>
+      </div>
     </div>
+  </nav>
+
+  <!-- 🔹 Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-4xl w-full mx-auto mt-6 space-y-3 px-4">
+        {% for category, message in messages %}
+          <div class="p-3 rounded-lg text-sm font-medium 
+            {% if category == 'error' %} bg-red-500/80 
+            {% elif category == 'success' %} bg-green-500/80 
+            {% else %} bg-blue-500/80 
+            {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- 🔹 Header -->
+  <header class="max-w-6xl mx-auto flex flex-wrap items-center justify-between px-6 py-8 border-b border-gray-700 gap-4">
+    <h1 class="text-3xl font-bold text-white">My Teams</h1>
+    <a href="{{ url_for('team.create_team') }}"
+       class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-blue-500/30 transition whitespace-nowrap">
+      + Create New Team
+    </a>
+  </header>
+
+  <!-- 🔹 Main Content -->
+  <main class="flex-grow max-w-6xl mx-auto px-6 py-10">
+
+    {% if team_data %}
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {% for data in team_data %}
+        <div class="flex flex-col justify-between bg-gray-800/70 border border-gray-700 rounded-2xl shadow-md hover:shadow-blue-500/20 transition overflow-hidden min-h-[320px]">
+
+          <!-- Team Header -->
+          <div class="bg-gray-900/70 px-5 py-4 border-b border-gray-700">
+            <h3 class="text-xl font-bold text-white truncate">{{ data.team.name }}</h3>
+            <p class="text-sm text-gray-400">Team ID: {{ data.team.team_id }}</p>
+          </div>
+
+          <!-- Team Info -->
+          <div class="p-5 flex-1 space-y-3 text-gray-300 text-sm">
+            <p><span class="font-semibold text-gray-200">Department:</span> {{ data.team.department }}</p>
+            <p><span class="font-semibold text-gray-200">Manager:</span> {{ data.team.manager_name }}</p>
+          </div>
+
+          <!-- Stats -->
+          <div class="flex justify-around border-t border-gray-700 py-3 bg-gray-900/40">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-blue-400">{{ data.player_count }}</div>
+              <div class="text-xs uppercase tracking-wide text-gray-400">Players</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-emerald-400">{{ data.tournament_count }}</div>
+              <div class="text-xs uppercase tracking-wide text-gray-400">Tournaments</div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-wrap justify-between items-center gap-3 px-5 py-4 border-t border-gray-700 bg-gray-900/70">
+            <a href="{{ url_for('team.dashboard', team_id=data.team.team_id) }}"
+               class="flex-1 text-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition">
+              View Dashboard
+            </a>
+            <a href="{{ url_for('team.update_profile', team_id=data.team.team_id) }}"
+               class="flex-1 text-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition">
+              Edit Profile
+            </a>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-20">
+        <h3 class="text-xl font-semibold mb-3 text-gray-300">You haven’t created any teams yet.</h3>
+        <p class="text-gray-400 mb-6">Start by creating your first team to manage tournaments.</p>
+        <a href="{{ url_for('team.create_team') }}"
+           class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-blue-500/30 transition">
+          + Create Your First Team
+        </a>
+      </div>
+    {% endif %}
+  </main>
+
+  <!-- 🔹 Footer -->
+  <footer class="text-center py-4 text-sm text-gray-500 border-t border-gray-800">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
 </body>
 </html>

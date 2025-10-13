@@ -1,123 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Team - TourneyTrack</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Team – TourneyTrackers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <nav>
-        <div class="nav-container">
-            <h1>TourneyTrack</h1>
-            <div class="nav-links">
-                <span>Team Manager: {{ g.current_user.username }}</span>
-                <a href="{{ url_for('team.my_teams') }}">My Teams</a>
-                <a href="{{ url_for('team.browse_tournaments') }}">Browse Tournaments</a>
-                <a href="{{ url_for('auth.logout') }}">Logout</a>
-            </div>
-        </div>
-    </nav>
+<body class="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex flex-col">
 
-    <div class="container">
-        <h2>Create New Team</h2>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" class="form-card">
-            <h3>Team Details</h3>
-            
-            <div class="form-group">
-                <label for="team_name">Team Name *</label>
-                <input type="text" id="team_name" name="team_name" required>
-            </div>
-
-            <div class="form-group">
-                <label for="department">Department *</label>
-                <input type="text" id="department" name="department" required>
-            </div>
-
-            <div class="form-group">
-                <label for="manager_name">Manager Name *</label>
-                <input type="text" id="manager_name" name="manager_name" required>
-            </div>
-
-            <div class="form-group">
-                <label for="manager_contact">Manager Contact</label>
-                <input type="text" id="manager_contact" name="manager_contact">
-            </div>
-
-            <h3>Players (Optional - can add later)</h3>
-            <div id="players-container">
-                <div class="player-entry">
-                    <h4>Player 1</h4>
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" name="player_1_name">
-                    </div>
-                    <div class="form-group">
-                        <label>Roll Number</label>
-                        <input type="number" name="player_1_roll">
-                    </div>
-                    <div class="form-group">
-                        <label>Department</label>
-                        <input type="text" name="player_1_dept">
-                    </div>
-                    <div class="form-group">
-                        <label>Year</label>
-                        <input type="text" name="player_1_year">
-                    </div>
-                    <div class="form-group">
-                        <label>Contact</label>
-                        <input type="text" name="player_1_contact">
-                    </div>
-                </div>
-            </div>
-
-            <button type="button" onclick="addPlayer()" class="btn-secondary">Add Another Player</button>
-            <button type="submit" class="btn-primary">Create Team</button>
-        </form>
+  <!-- 🔹 Navbar -->
+  <nav class="bg-black/60 backdrop-blur border-b border-gray-700">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+      <a href="{{ url_for('team.my_teams') }}" class="text-2xl font-bold tracking-wide text-white hover:text-blue-400 transition">
+        TourneyTrackers
+      </a>
+      <div class="flex items-center gap-4 text-sm">
+        <span class="text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-400 transition">My Teams</a>
+        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-400 transition">Browse Tournaments</a>
+        <a href="{{ url_for('auth.logout') }}" class="hover:text-red-400 transition">Logout</a>
+      </div>
     </div>
+  </nav>
 
-    <script>
-        let playerCount = 1;
-        
-        function addPlayer() {
-            playerCount++;
-            const container = document.getElementById('players-container');
-            const playerDiv = document.createElement('div');
-            playerDiv.className = 'player-entry';
-            playerDiv.innerHTML = `
-                <h4>Player ${playerCount}</h4>
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" name="player_${playerCount}_name">
-                </div>
-                <div class="form-group">
-                    <label>Roll Number</label>
-                    <input type="number" name="player_${playerCount}_roll">
-                </div>
-                <div class="form-group">
-                    <label>Department</label>
-                    <input type="text" name="player_${playerCount}_dept">
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="player_${playerCount}_year">
-                </div>
-                <div class="form-group">
-                    <label>Contact</label>
-                    <input type="text" name="player_${playerCount}_contact">
-                </div>
-            `;
-            container.appendChild(playerDiv);
-        }
-    </script>
+  <!-- 🔹 Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-3xl w-full mx-auto mt-6 space-y-3 px-4">
+        {% for category, message in messages %}
+          <div class="p-3 rounded-lg text-sm font-medium 
+            {% if category == 'error' %} bg-red-500/80 
+            {% elif category == 'success' %} bg-green-500/80 
+            {% else %} bg-blue-500/80 
+            {% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- 🔹 Main Section -->
+  <main class="flex-grow flex justify-center items-start px-4 py-10">
+    <div class="w-full max-w-4xl bg-gray-800/70 border border-gray-700 rounded-2xl shadow-xl backdrop-blur-sm p-8">
+
+      <h2 class="text-3xl font-bold mb-6 text-center">Create New Team</h2>
+
+      <!-- Form -->
+      <form method="POST" class="space-y-8">
+
+        <!-- Team Details -->
+        <section>
+          <h3 class="text-xl font-semibold mb-4 text-blue-400">Team Details</h3>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium mb-2 text-gray-300">Team Name *</label>
+              <input type="text" name="team_name" required
+                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-white transition"
+                     placeholder="Enter team name">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2 text-gray-300">Department *</label>
+              <input type="text" name="department" required
+                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-white transition"
+                     placeholder="e.g. Computer Science">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2 text-gray-300">Manager Name *</label>
+              <input type="text" name="manager_name" required
+                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-white transition"
+                     placeholder="Enter manager name">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2 text-gray-300">Manager Contact</label>
+              <input type="text" name="manager_contact"
+                     class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-white transition"
+                     placeholder="Phone number (optional)">
+            </div>
+          </div>
+        </section>
+
+        <!-- Player Details -->
+        <section>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-semibold text-blue-400">Players (Optional)</h3>
+            <button type="button" id="add-player"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition">
+              + Add Player
+            </button>
+          </div>
+
+          <div id="players-container" class="space-y-4">
+            <div class="player-entry bg-gray-700/60 border border-gray-600 p-4 rounded-lg">
+              <h4 class="font-semibold text-gray-200 mb-3">Player 1</h4>
+              <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <input type="text" name="player_1_name" placeholder="Name" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+                <input type="number" name="player_1_roll" placeholder="Roll Number" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+                <input type="text" name="player_1_dept" placeholder="Department" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+                <input type="text" name="player_1_year" placeholder="Year" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+                <input type="text" name="player_1_contact" placeholder="Contact" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Submit -->
+        <div class="flex justify-end gap-4 pt-4">
+          <a href="{{ url_for('team.my_teams') }}" 
+             class="px-5 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+            Cancel
+          </a>
+          <button type="submit"
+                  class="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-blue-500/30 transition">
+            Create Team
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- 🔹 Footer -->
+  <footer class="text-center py-4 text-sm text-gray-500 border-t border-gray-800">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
+
+  <!-- 🔹 Add Player Script -->
+  <script>
+    let playerCount = 1;
+    const container = document.getElementById('players-container');
+    const addBtn = document.getElementById('add-player');
+
+    addBtn.addEventListener('click', () => {
+      playerCount++;
+      const playerDiv = document.createElement('div');
+      playerDiv.className = 'player-entry bg-gray-700/60 border border-gray-600 p-4 rounded-lg';
+      playerDiv.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold text-gray-200">Player ${playerCount}</h4>
+          <button type="button" class="text-red-400 hover:text-red-300 text-sm remove-btn">Remove</button>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <input type="text" name="player_${playerCount}_name" placeholder="Name" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+          <input type="number" name="player_${playerCount}_roll" placeholder="Roll Number" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+          <input type="text" name="player_${playerCount}_dept" placeholder="Department" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+          <input type="text" name="player_${playerCount}_year" placeholder="Year" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+          <input type="text" name="player_${playerCount}_contact" placeholder="Contact" class="p-2 bg-gray-800 border border-gray-600 rounded focus:ring focus:ring-blue-500/30 text-white placeholder-gray-400">
+        </div>`;
+      container.appendChild(playerDiv);
+    });
+
+    // Remove player block
+    container.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove-btn')) {
+        e.target.closest('.player-entry').remove();
+      }
+    });
+  </script>
 </body>
 </html>
