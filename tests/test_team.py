@@ -257,62 +257,18 @@ class TestBrowseTournaments:
         assert response.status_code == 200
         assert b'Pending' in response.data or b'pending' in response.data
     
-    # this test is the required version but failing due to session scope issues, can be fixed later
-    """def test_browse_tournaments_shows_past_and_future(self, authenticated_team_manager, flask_app, smc_user):
-    # Test browse shows all tournaments regardless of status
-        with flask_app.app_context():
-            # Merge smc_user to current session
-            smc = db.session.merge(smc_user)
-        
-            past_tournament = Tournament(
-                name='PastTest',
-                start_date=date.today() - timedelta(days=60),
-                end_date=date.today() - timedelta(days=30),
-                status='completed',
-                created_by=smc.id
-            )
-            future_tournament = Tournament(
-                name='FutureTest',
-                start_date=date.today() + timedelta(days=30),
-                end_date=date.today() + timedelta(days=60),
-                status='upcoming',
-                created_by=smc.id
-            )
-            db.session.add_all([past_tournament, future_tournament])
-            db.session.commit()
-        
-            # Verify creation
-            count = Tournament.query.filter(
-                Tournament.name.in_(['PastTest', 'FutureTest'])
-            ).count()
-            assert count == 2
-    
-        # Now make the request (outside the context manager)
-        response = authenticated_team_manager.get('/team/browse-tournaments')
-        assert response.status_code == 200
-        response_text = response.data.decode('utf-8').lower()
-    
-        # Check if either tournament appears
-        assert 'pasttest' in response_text or 'futuretest' in response_text
-    """
-
-    def test_browse_tournaments_shows_past_and_future(self, authenticated_team_manager, tournament, tournament2):
-
-        """Test browse shows tournaments with different statuses
-    
-        Note: This is a simplified test due to session scope issues with creating
-        tournaments in test context. Ideally should verify past/future tournaments
-        explicitly appear, but currently just verifies basic browse functionality.
-        TODO: Investigate fixture scope for more thorough testing.
-        """
-
+    def test_browse_tournaments_shows_past_and_future(self, authenticated_team_manager, past_tournament, future_tournament, self_managed_team):
+        """Test browse shows all tournaments regardless of status"""
+        # The fixtures have already created and committed the tournaments
+        # Now just make the request
         response = authenticated_team_manager.get('/team/browse-tournaments')
         assert response.status_code == 200
     
-        # Verify page has tournament content
         response_text = response.data.decode('utf-8').lower()
-        assert 'tournament' in response_text
-        assert len(response.data) > 500  # Page has substantial content
+    
+        # Verify both tournaments appear
+        assert 'pasttest' in response_text
+        assert 'futuretest' in response_text
 
     def test_browse_tournaments_requires_login(self, client):
         """Test browse tournaments requires authentication"""
