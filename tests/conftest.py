@@ -148,6 +148,30 @@ def team2(flask_app, smc_user):
     with flask_app.app_context():
         return Team.query.filter_by(team_id=team_id).first()
 
+@pytest.fixture
+def self_managed_team(flask_app, team_manager_user):
+    """Create a test team created by team manager (Stage 3)"""
+    with flask_app.app_context():
+        # Get fresh team_manager_user in this context
+        manager = User.query.get(team_manager_user.id)
+        
+        team = Team(
+            team_id='TM0001',
+            name='Self Managed Team',
+            department='IT',
+            manager_name='Self Manager',
+            manager_contact='5555555555',
+            created_by=manager.id,
+            is_self_managed=True
+        )
+        db.session.add(team)
+        db.session.commit()
+        team_id = team.team_id
+    
+    # Return fresh instance in new context
+    with flask_app.app_context():
+        return Team.query.filter_by(team_id=team_id).first()
+
 
 @pytest.fixture
 def player(flask_app, team):
