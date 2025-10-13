@@ -5,6 +5,7 @@ from functools import wraps
 import os
 from blueprints.auth import auth_bp
 from blueprints.smc import smc_bp
+from blueprints.team import team_bp
 
 app = Flask(__name__)
 
@@ -39,6 +40,7 @@ with app.app_context():
 # Register blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(smc_bp)
+app.register_blueprint(team_bp)
 
 
 # Sprint 1 Decorators (DEPRECATED - kept for backward compatibility with old Sprint 1 routes)
