@@ -250,6 +250,40 @@ def register_team(tournament_id):
     
     return render_template('register-team.html', tournament=tournament)
 
+@smc_bp.route('/tournament/<int:tournament_id>/approve-team/<team_id>', methods=['POST'])
+@require_smc
+def approve_team(tournament_id, team_id):
+    """Approve team join request"""
+    tournament = Tournament.query.get_or_404(tournament_id)
+    
+    # Authorization check
+    if tournament.created_by != g.current_user.id:
+        flash('You do not have permission to manage this tournament.', 'error')
+        return redirect(url_for('smc.dashboard'))
+    
+    try:
+        tt = TournamentTeam.query.filter_by(
+            tournament_id=tournament_id,
+            team_id=team_id
+        ).first_or_404()
+        
+        action = request.form.get('action')
+        
+        if action == 'approve':
+            tt.status = 'active'
+            db.session.commit()
+            flash(f'Team approved successfully!', 'success')
+        elif action == 'reject':
+            db.session.delete(tt)
+            db.session.commit()
+            flash(f'Team request rejected.', 'info')
+        
+        return redirect(url_for('smc.tournament_detail', tournament_id=tournament_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error processing request: {str(e)}', 'error')
+        return redirect(url_for('smc.tournament_detail', tournament_id=tournament_id))
 
 @smc_bp.route('/tournament/<int:tournament_id>/schedule-matches', methods=['GET', 'POST'])
 @require_smc
