@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Team - TourneyTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>TourneyTrack</h1>
+            <div class="nav-links">
+                <span>Team Manager: {{ g.current_user.username }}</span>
+                <a href="{{ url_for('team.my_teams') }}">My Teams</a>
+                <a href="{{ url_for('team.browse_tournaments') }}">Browse Tournaments</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Create New Team</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="form-card">
+            <h3>Team Details</h3>
+            
+            <div class="form-group">
+                <label for="team_name">Team Name *</label>
+                <input type="text" id="team_name" name="team_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="department">Department *</label>
+                <input type="text" id="department" name="department" required>
+            </div>
+
+            <div class="form-group">
+                <label for="manager_name">Manager Name *</label>
+                <input type="text" id="manager_name" name="manager_name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="manager_contact">Manager Contact</label>
+                <input type="text" id="manager_contact" name="manager_contact">
+            </div>
+
+            <h3>Players (Optional - can add later)</h3>
+            <div id="players-container">
+                <div class="player-entry">
+                    <h4>Player 1</h4>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="player_1_name">
+                    </div>
+                    <div class="form-group">
+                        <label>Roll Number</label>
+                        <input type="number" name="player_1_roll">
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="player_1_dept">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="text" name="player_1_year">
+                    </div>
+                    <div class="form-group">
+                        <label>Contact</label>
+                        <input type="text" name="player_1_contact">
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" onclick="addPlayer()" class="btn-secondary">Add Another Player</button>
+            <button type="submit" class="btn-primary">Create Team</button>
+        </form>
+    </div>
+
+    <script>
+        let playerCount = 1;
+        
+        function addPlayer() {
+            playerCount++;
+            const container = document.getElementById('players-container');
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-entry';
+            playerDiv.innerHTML = `
+                <h4>Player ${playerCount}</h4>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="player_${playerCount}_name">
+                </div>
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="number" name="player_${playerCount}_roll">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="player_${playerCount}_dept">
+                </div>
+                <div class="form-group">
+                    <label>Year</label>
+                    <input type="text" name="player_${playerCount}_year">
+                </div>
+                <div class="form-group">
+                    <label>Contact</label>
+                    <input type="text" name="player_${playerCount}_contact">
+                </div>
+            `;
+            container.appendChild(playerDiv);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Teams - TourneyTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>TourneyTrack</h1>
+            <div class="nav-links">
+                <span>Team Manager: {{ g.current_user.username }}</span>
+                <a href="{{ url_for('team.my_teams') }}" class="active">My Teams</a>
+                <a href="{{ url_for('team.browse_tournaments') }}">Browse Tournaments</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header-row">
+            <h2>My Teams</h2>
+            <a href="{{ url_for('team.create_team') }}" class="btn-primary">Create New Team</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if team_data %}
+            <div class="teams-grid">
+                {% for data in team_data %}
+                <div class="team-card">
+                    <h3>{{ data.team.name }}</h3>
+                    <p><strong>Team ID:</strong> {{ data.team.team_id }}</p>
+                    <p><strong>Department:</strong> {{ data.team.department }}</p>
+                    <p><strong>Manager:</strong> {{ data.team.manager_name }}</p>
+                    
+                    <div class="team-stats">
+                        <div class="stat">
+                            <span class="stat-label">Players</span>
+                            <span class="stat-value">{{ data.player_count }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Tournaments</span>
+                            <span class="stat-value">{{ data.tournament_count }}</span>
+                        </div>
+                    </div>
+
+                    <div class="team-actions">
+                        <a href="{{ url_for('team.dashboard', team_id=data.team.team_id) }}" class="btn-primary">View Dashboard</a>
+                        <a href="{{ url_for('team.update_profile', team_id=data.team.team_id) }}" class="btn-secondary">Edit Profile</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>You haven't created any teams yet.</p>
+                <a href="{{ url_for('team.create_team') }}" class="btn-primary">Create Your First Team</a>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

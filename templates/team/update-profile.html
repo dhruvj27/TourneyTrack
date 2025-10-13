@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Profile - {{ team.name }} - TourneyTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>TourneyTrack</h1>
+            <div class="nav-links">
+                <span>{{ g.current_user.username }} | {{ team.name }}</span>
+                <a href="{{ url_for('team.my_teams') }}">My Teams</a>
+                <a href="{{ url_for('team.dashboard', team_id=team.team_id) }}">Dashboard</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="{{ url_for('team.my_teams') }}">My Teams</a> &gt; 
+            <a href="{{ url_for('team.dashboard', team_id=team.team_id) }}">{{ team.name }}</a> &gt; 
+            Update Profile
+        </div>
+
+        <h2>Update Team Profile</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Team Details Section -->
+        <div class="form-card">
+            <h3>Team Details</h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="update_team">
+                
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" value="{{ team.name }}" disabled>
+                    <small>Team name cannot be changed</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Team ID</label>
+                    <input type="text" value="{{ team.team_id }}" disabled>
+                </div>
+
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" value="{{ team.department }}" disabled>
+                </div>
+
+                <div class="form-group">
+                    <label for="manager_name">Manager Name</label>
+                    <input type="text" id="manager_name" name="manager_name" value="{{ team.manager_name }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="manager_contact">Manager Contact</label>
+                    <input type="text" id="manager_contact" name="manager_contact" value="{{ team.manager_contact or '' }}">
+                </div>
+
+                <button type="submit" class="btn-primary">Update Team Details</button>
+            </form>
+        </div>
+
+        <!-- Players Section -->
+        <div class="form-card">
+            <h3>Squad Management</h3>
+            
+            {% if players %}
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_players">
+                    
+                    {% for player in players %}
+                    <div class="player-update-card">
+                        <h4>{{ player.name }}</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" name="player_{{ player.id }}_name" value="{{ player.name }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Roll Number</label>
+                                <input type="number" name="player_{{ player.id }}_roll_number" value="{{ player.roll_number }}">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Department</label>
+                                <input type="text" name="player_{{ player.id }}_department" value="{{ player.department or '' }}">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Year</label>
+                                <input type="text" name="player_{{ player.id }}_year" value="{{ player.year or '' }}">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Contact</label>
+                            <input type="text" name="player_{{ player.id }}_contact" value="{{ player.contact or '' }}">
+                        </div>
+
+                        <form method="POST" style="display: inline;" onsubmit="return confirm('Remove this player from the squad?');">
+                            <input type="hidden" name="action" value="remove_player">
+                            <input type="hidden" name="player_id" value="{{ player.id }}">
+                            <button type="submit" class="btn-danger btn-small">Remove Player</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn-primary">Update All Players</button>
+                </form>
+            {% else %}
+                <p class="empty-state">No players in squad yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Add New Player Section -->
+        <div class="form-card">
+            <h3>Add New Player</h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="add_player">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_player_name">Player Name *</label>
+                        <input type="text" id="new_player_name" name="new_player_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new_player_roll">Roll Number *</label>
+                        <input type="number" id="new_player_roll" name="new_player_roll" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_player_department">Department</label>
+                        <input type="text" id="new_player_department" name="new_player_department" value="{{ team.department }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new_player_year">Year</label>
+                        <input type="text" id="new_player_year" name="new_player_year">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_player_contact">Contact</label>
+                    <input type="text" id="new_player_contact" name="new_player_contact">
+                </div>
+
+                <button type="submit" class="btn-primary">Add Player</button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .player-update-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .player-update-card h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ team.name }} Dashboard - TourneyTrack</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <h1>TourneyTrack</h1>
+            <div class="nav-links">
+                <span>{{ g.current_user.username }} | {{ team.name }}</span>
+                <a href="{{ url_for('team.my_teams') }}">My Teams</a>
+                <a href="{{ url_for('team.browse_tournaments') }}">Browse Tournaments</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="{{ url_for('team.my_teams') }}">My Teams</a> &gt; {{ team.name }}
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="dashboard-header">
+            <div>
+                <h2>{{ team.name }}</h2>
+                <p>Team ID: {{ team.team_id }} | Department: {{ team.department }}</p>
+            </div>
+            <a href="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="btn-primary">Edit Profile</a>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>{{ record.wins }}</h3>
+                <p>Wins</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ record.losses }}</h3>
+                <p>Losses</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ record.draws }}</h3>
+                <p>Draws</p>
+            </div>
+            <div class="stat-card">
+                <h3>{{ players|length }}</h3>
+                <p>Players</p>
+            </div>
+        </div>
+
+        <!-- Tournaments Section -->
+        <div class="section">
+            <h3>Tournaments</h3>
+            {% if tournaments %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tournament Name</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tournament in tournaments %}
+                        <tr>
+                            <td>{{ tournament.name }}</td>
+                            <td>{{ tournament.start_date }}</td>
+                            <td>{{ tournament.end_date }}</td>
+                            <td><span class="badge badge-{{ tournament.status }}">{{ tournament.status }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-state">Not participating in any tournaments yet. <a href="{{ url_for('team.browse_tournaments') }}">Browse tournaments</a></p>
+            {% endif %}
+        </div>
+
+        <!-- Players Section -->
+        <div class="section">
+            <h3>Squad</h3>
+            {% if players %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Roll Number</th>
+                            <th>Department</th>
+                            <th>Year</th>
+                            <th>Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in players %}
+                        <tr>
+                            <td>{{ player.name }}</td>
+                            <td>{{ player.roll_number }}</td>
+                            <td>{{ player.department }}</td>
+                            <td>{{ player.year }}</td>
+                            <td>{{ player.contact }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-state">No players in squad yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Matches -->
+        <div class="section">
+            <h3>Upcoming Matches</h3>
+            {% if upcoming_matches %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Match</th>
+                            <th>Venue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for match in upcoming_matches %}
+                        <tr>
+                            <td>{{ match.date }}</td>
+                            <td>{{ match.time.strftime('%H:%M') }}</td>
+                            <td>{{ match.versus_display }}</td>
+                            <td>{{ match.venue }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-state">No upcoming matches scheduled.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Results -->
+        <div class="section">
+            <h3>Recent Results</h3>
+            {% if completed_matches %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Match</th>
+                            <th>Score</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for match in completed_matches[:5] %}
+                        <tr>
+                            <td>{{ match.date }}</td>
+                            <td>{{ match.versus_display }}</td>
+                            <td>{{ match.team1.name }}: {{ match.team1_score }} | {{ match.team2.name }}: {{ match.team2_score }}</td>
+                            <td>
+                                {% if match.winner_id == team.team_id %}
+                                    <span class="badge badge-success">Won</span>
+                                {% elif match.winner_id %}
+                                    <span class="badge badge-danger">Lost</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Draw</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty-state">No completed matches yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
