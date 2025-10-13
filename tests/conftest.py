@@ -234,7 +234,45 @@ def past_match(flask_app, tournament, team, team2):
     with flask_app.app_context():
         return Match.query.get(match_id)
 
+@pytest.fixture
+def past_tournament(flask_app, smc_user):
+    """Create a completed/past tournament (Stage 3)"""
+    with flask_app.app_context():
+        tournament = Tournament(
+            name='PastTest',
+            start_date=date.today() - timedelta(days=60),
+            end_date=date.today() - timedelta(days=30),
+            status='completed',
+            rules='Past tournament for testing',
+            created_by=smc_user.id
+        )
+        db.session.add(tournament)
+        db.session.commit()
+        tournament_id = tournament.id
+    
+    with flask_app.app_context():
+        return Tournament.query.get(tournament_id)
 
+
+@pytest.fixture
+def future_tournament(flask_app, smc_user):
+    """Create an upcoming/future tournament (Stage 3)"""
+    with flask_app.app_context():
+        tournament = Tournament(
+            name='FutureTest',
+            start_date=date.today() + timedelta(days=30),
+            end_date=date.today() + timedelta(days=60),
+            status='upcoming',
+            rules='Future tournament for testing',
+            created_by=smc_user.id
+        )
+        db.session.add(tournament)
+        db.session.commit()
+        tournament_id = tournament.id
+    
+    with flask_app.app_context():
+        return Tournament.query.get(tournament_id)
+        
 @pytest.fixture
 def authenticated_smc(client, smc_user):
     """Login as SMC via new auth blueprint and return authenticated client"""
