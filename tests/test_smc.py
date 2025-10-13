@@ -412,6 +412,10 @@ class TestTournamentTeamModel:
     def test_tournament_team_creation(self, flask_app, tournament, team):
         """Test creating tournament-team association"""
         with flask_app.app_context():
+            # Reattach fixtures to session
+            tournament = db.session.merge(tournament)
+            team = db.session.merge(team)
+            
             tt = TournamentTeam(tournament_id=tournament.id, team_id=team.team_id)
             db.session.add(tt)
             db.session.commit()
@@ -423,6 +427,10 @@ class TestTournamentTeamModel:
     def test_tournament_team_unique_constraint(self, flask_app, tournament, team):
         """Test team cannot join same tournament twice"""
         with flask_app.app_context():
+            # Reattach fixtures to session
+            tournament = db.session.merge(tournament)
+            team = db.session.merge(team)
+            
             tt1 = TournamentTeam(tournament_id=tournament.id, team_id=team.team_id)
             db.session.add(tt1)
             db.session.commit()
@@ -438,6 +446,11 @@ class TestTournamentTeamModel:
     def test_tournament_get_teams(self, flask_app, tournament, team, team2):
         """Test Tournament.get_teams() method"""
         with flask_app.app_context():
+            # Reattach fixtures to session
+            tournament = db.session.merge(tournament)
+            team = db.session.merge(team)
+            team2 = db.session.merge(team2)
+            
             tt1 = TournamentTeam(tournament_id=tournament.id, team_id=team.team_id)
             tt2 = TournamentTeam(tournament_id=tournament.id, team_id=team2.team_id)
             db.session.add_all([tt1, tt2])
@@ -452,6 +465,11 @@ class TestTournamentTeamModel:
     def test_team_get_tournaments(self, flask_app, tournament, tournament2, team):
         """Test Team.get_tournaments() method"""
         with flask_app.app_context():
+            # Reattach fixtures to session
+            tournament = db.session.merge(tournament)
+            tournament2 = db.session.merge(tournament2)
+            team = db.session.merge(team)
+            
             tt1 = TournamentTeam(tournament_id=tournament.id, team_id=team.team_id)
             tt2 = TournamentTeam(tournament_id=tournament2.id, team_id=team.team_id)
             db.session.add_all([tt1, tt2])

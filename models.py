@@ -83,9 +83,16 @@ class Tournament(db.Model):
     matches = db.relationship('Match', backref='tournament', lazy=True, foreign_keys='Match.tournament_id')
     tournament_teams = db.relationship('TournamentTeam', backref='tournament', lazy=True, cascade='all, delete-orphan')
 
+    #def get_teams(self):
+    """Get all teams in this tournament"""
+        #return [tt.team for tt in self.tournament_teams]
     def get_teams(self):
-        """Get all teams in this tournament"""
-        return [tt.team for tt in self.tournament_teams]
+        """Get all teams in this tournament (session-safe)"""
+        return db.session.query(Team).join(
+            TournamentTeam
+        ).filter(
+            TournamentTeam.tournament_id == self.id
+        ).all()
     
     def get_active_teams(self):
         """Get active teams in this tournament"""
@@ -136,9 +143,17 @@ class Team(db.Model):
                                  primaryjoin='Team.team_id == Match.winner_id',
                                  backref='winner', lazy=True)
 
+    # def get_tournaments(self):
+    """Get all tournaments this team is part of"""
+        # return [tt.tournament for tt in self.tournament_teams]
+    
     def get_tournaments(self):
-        """Get all tournaments this team is part of"""
-        return [tt.tournament for tt in self.tournament_teams]
+        """Get all tournaments this team is in (session-safe)"""
+        return db.session.query(Tournament).join(
+            TournamentTeam
+        ).filter(
+            TournamentTeam.team_id == self.team_id
+        ).all()
     
     def get_upcoming_matches(self, tournament_id=None):
         """Get upcoming matches for this team, optionally filtered by tournament"""
