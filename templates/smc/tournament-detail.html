@@ -22,6 +22,23 @@
   <!-- Main Content -->
   <main class="max-w-6xl mx-auto px-6 py-8 space-y-8">
 
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded-lg border 
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'info' %}bg-blue-50 border-blue-200 text-blue-800
+              {% else %}bg-yellow-50 border-yellow-200 text-yellow-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <!-- Tournament Summary -->
     <section class="bg-white border rounded-lg shadow p-6">
       <h2 class="text-xl font-bold mb-4">🏆 Tournament Overview</h2>
@@ -105,14 +122,69 @@
       </div>
     </section>
 
-    <!-- Teams List -->
+    <!-- ADDED: Pending Join Requests Section -->
+    <section class="bg-white border rounded-lg shadow p-6">
+      <h2 class="text-xl font-bold mb-4">⏳ Pending Join Requests</h2>
+
+      {% set pending_requests = tournament.tournament_teams|selectattr('status', 'equalto', 'pending')|list %}
+      {% if pending_requests %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-gray-100 border-b">
+              <tr>
+                <th class="px-4 py-3 font-medium text-gray-700">Team Name</th>
+                <th class="px-4 py-3 font-medium text-gray-700">Team ID</th>
+                <th class="px-4 py-3 font-medium text-gray-700">Department</th>
+                <th class="px-4 py-3 font-medium text-gray-700">Manager</th>
+                <th class="px-4 py-3 font-medium text-gray-700 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              {% for tt in pending_requests %}
+              <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 font-medium text-gray-800">{{ tt.team.name }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ tt.team.team_id }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ tt.team.department }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ tt.team.manager_name }}</td>
+                <td class="px-4 py-3 text-center">
+                  <div class="flex gap-2 justify-center">
+                    <form method="POST" action="{{ url_for('smc.approve_team', tournament_id=tournament.id, team_id=tt.team.team_id) }}">
+                      <input type="hidden" name="action" value="approve">
+                      <button type="submit" 
+                              class="px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 font-medium transition">
+                        ✓ Approve
+                      </button>
+                    </form>
+                    <form method="POST" 
+                          action="{{ url_for('smc.approve_team', tournament_id=tournament.id, team_id=tt.team.team_id) }}"
+                          onsubmit="return confirm('Reject this team\'s request?');">
+                      <input type="hidden" name="action" value="reject">
+                      <button type="submit" 
+                              class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 font-medium transition">
+                        ✕ Reject
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-gray-500 text-sm">No pending join requests.</p>
+      {% endif %}
+    </section>
+
+    <!-- Teams List (Active Teams Only) -->
     <section class="bg-white border rounded-lg shadow p-6">
       <h2 class="text-xl font-bold mb-4">👥 Teams in This Tournament</h2>
 
       {% if tournament_teams %}
         <ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {% for tt in tournament_teams %}
-            <li class="border rounded-lg p-4">
+            {% if tt.status == 'active' or tt.status == 'eliminated' or tt.status == 'champion' %}
+            <li class="border rounded-lg p-4 relative">
               <h3 class="font-semibold text-gray-800">{{ tt.team.name }}</h3>
               <p class="text-sm text-gray-600">
                 Department: {{ tt.team.department or '—' }}
@@ -120,7 +192,15 @@
               <p class="text-sm text-gray-600">
                 Manager: {{ tt.team.manager_name or '—' }}
               </p>
+              {% if tt.status != 'active' %}
+                <span class="absolute top-2 right-2 px-2 py-1 text-xs rounded-full 
+                  {% if tt.status == 'champion' %}bg-yellow-100 text-yellow-700
+                  {% elif tt.status == 'eliminated' %}bg-gray-100 text-gray-600{% endif %}">
+                  {{ tt.status|capitalize }}
+                </span>
+              {% endif %}
             </li>
+            {% endif %}
           {% endfor %}
         </ul>
       {% else %}
