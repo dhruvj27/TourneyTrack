@@ -38,7 +38,12 @@ def db_session(flask_app):
 def smc_user(flask_app):
     """Create a test SMC user (Stage 1 - new auth)"""
     with flask_app.app_context():
-        user = User(username='test_smc', email='smc@test.com', role='smc')
+        user = User(
+            username='test_smc',
+            email='smc@test.com',
+            role='smc',
+            institution='Test University',
+        )
         user.set_password('Test@123')
         db.session.add(user)
         db.session.commit()
@@ -57,7 +62,12 @@ def smc_user(flask_app):
 def team_manager_user(flask_app):
     """Create a test team manager user (Stage 1 - new auth)"""
     with flask_app.app_context():
-        user = User(username='test_manager', email='manager@test.com', role='team_manager')
+        user = User(
+            username='test_manager',
+            email='manager@test.com',
+            role='team_manager',
+            institution='Test University',
+        )
         user.set_password('Manager@123')
         db.session.add(user)
         db.session.commit()
@@ -77,7 +87,8 @@ def tournament(flask_app, smc_user):
             end_date=date.today() + timedelta(days=30),
             status='active',
             rules='Test tournament rules',
-            created_by=smc_user.id
+            created_by=smc_user.id,
+            institution=smc_user.institution,
         )
         db.session.add(tournament)
         db.session.commit()
@@ -97,7 +108,8 @@ def tournament2(flask_app, smc_user):
             end_date=date.today() + timedelta(days=30),
             status='active',
             rules='Test tournament 2 rules',
-            created_by=smc_user.id
+            created_by=smc_user.id,
+            institution=smc_user.institution,
         )
         db.session.add(tournament)
         db.session.commit()
@@ -118,7 +130,7 @@ def team(flask_app, smc_user):
             manager_name='John Doe',
             manager_contact='9876543210',
             created_by=smc_user.id,
-            is_self_managed=False
+            institution=smc_user.institution,
         )
         db.session.add(team)
         db.session.commit()
@@ -139,7 +151,7 @@ def team2(flask_app, smc_user):
             manager_name='Jane Doe',
             manager_contact='1234567890',
             created_by=smc_user.id,
-            is_self_managed=False
+            institution=smc_user.institution,
         )
         db.session.add(team)
         db.session.commit()
@@ -162,7 +174,7 @@ def self_managed_team(flask_app, team_manager_user):
             manager_name='Self Manager',
             manager_contact='5555555555',
             created_by=manager.id,
-            is_self_managed=True
+            institution=manager.institution,
         )
         db.session.add(team)
         db.session.commit()
@@ -244,7 +256,8 @@ def past_tournament(flask_app, smc_user):
             end_date=date.today() - timedelta(days=30),
             status='completed',
             rules='Past tournament for testing',
-            created_by=smc_user.id
+                created_by=smc_user.id,
+                institution=smc_user.institution,
         )
         db.session.add(tournament)
         db.session.commit()
@@ -264,7 +277,8 @@ def future_tournament(flask_app, smc_user):
             end_date=date.today() + timedelta(days=60),
             status='upcoming',
             rules='Future tournament for testing',
-            created_by=smc_user.id
+                created_by=smc_user.id,
+                institution=smc_user.institution,
         )
         db.session.add(tournament)
         db.session.commit()

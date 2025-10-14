@@ -2,8 +2,6 @@
 Integration tests for auth blueprint - testing new user registration and login routes added in Stage 1
 Tests /auth/register, /auth/login, /auth/logout routes
 """
-
-import pytest
 from models import db, User
 
 
@@ -22,7 +20,8 @@ class TestAuthRegistrationRoute:
             'username': 'newsmc',
             'email': 'newsmc@test.com',
             'password': 'NewSmc@123',  # Meets validation
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         })
         
         # Should redirect after success
@@ -33,6 +32,20 @@ class TestAuthRegistrationRoute:
         assert user is not None
         assert user.role == 'smc'
         assert user.email == 'newsmc@test.com'
+
+    def test_smc_registration_allows_missing_institution(self, client):
+        """SMC registration should allow optional institution field."""
+        response = client.post('/auth/register', data={
+            'username': 'missinginst',
+            'email': 'missing@test.com',
+            'password': 'Valid@123',
+            'role': 'smc',
+        })
+
+        assert response.status_code == 302
+        user = User.query.filter_by(username='missinginst').first()
+        assert user is not None
+        assert user.institution is None
 
     def test_team_manager_registration_success(self, client):
         """Test successful team manager registration via new route"""
@@ -55,7 +68,8 @@ class TestAuthRegistrationRoute:
             'username': 'test_smc',  # Already exists
             'email': 'different@test.com',
             'password': 'Test@123',
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'Username already exists' in response.data
@@ -66,7 +80,8 @@ class TestAuthRegistrationRoute:
             'username': 'differentuser',
             'email': 'smc@test.com',  # Already exists
             'password': 'Test@123',
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'Email already registered' in response.data
@@ -77,7 +92,8 @@ class TestAuthRegistrationRoute:
             'username': 'ab',  # Too short
             'email': 'user@test.com',
             'password': 'Test@123',
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'at least 3 characters' in response.data.lower()
@@ -88,7 +104,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'user@test.com',
             'password': 'Short1!',  # Only 7 chars
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'at least 8 characters' in response.data.lower()
@@ -99,7 +116,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'user@test.com',
             'password': 'test@123',  # No uppercase
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'uppercase' in response.data.lower()
@@ -110,7 +128,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'user@test.com',
             'password': 'TEST@123',  # No lowercase
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'lowercase' in response.data.lower()
@@ -121,7 +140,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'user@test.com',
             'password': 'Test@test',  # No digit
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'number' in response.data.lower() or b'digit' in response.data.lower()
@@ -132,7 +152,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'user@test.com',
             'password': 'Test1234',  # No special char
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'special character' in response.data.lower()
@@ -143,7 +164,8 @@ class TestAuthRegistrationRoute:
             'username': 'newuser',
             'email': 'notanemail',  # Invalid email
             'password': 'Test@123',
-            'role': 'smc'
+            'role': 'smc',
+            'institution': 'Tech University',
         }, follow_redirects=True)
         
         assert b'email' in response.data.lower()

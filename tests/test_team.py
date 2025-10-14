@@ -4,7 +4,7 @@ Tests /team/* routes for team self-registration, tournament browsing, and join r
 """
 
 import pytest
-from models import db, User, Tournament, Team, Player, TournamentTeam
+from models import db, User, Tournament, Team, Player, TournamentTeam, Notification
 from datetime import date, timedelta
 
 
@@ -547,7 +547,6 @@ class TestMultipleTeamsPerManager:
                     department='CSE',
                     manager_name='Manager',
                     created_by=team_manager_user.id,
-                    is_self_managed=True
                 )
                 db.session.add(team)
                 db.session.commit()
@@ -568,7 +567,6 @@ class TestMultipleTeamsPerManager:
                 department='CSE',
                 manager_name='Manager',
                 created_by=team_manager_user.id,
-                is_self_managed=True
             )
             team2 = Team(
                 team_id='TM0102',  # Using TM0102 format
@@ -576,7 +574,6 @@ class TestMultipleTeamsPerManager:
                 department='ECE',
                 manager_name='Manager',
                 created_by=team_manager_user.id,
-                is_self_managed=True
             )
             db.session.add_all([team1, team2])
             db.session.commit()
@@ -589,3 +586,254 @@ class TestMultipleTeamsPerManager:
         response2 = authenticated_team_manager.get('/team/dashboard/TM0102')
         assert response2.status_code == 200
         assert b'Team Beta' in response2.data
+
+
+class TestTeamDashboardOverview:
+    """Test the consolidated team manager dashboard overview."""
+
+    def test_dashboard_overview_shows_managed_team_and_metrics(
+        self,
+        authenticated_team_manager,
+        flask_app,
+        team_manager_user,
+        tournament,
+    ):
+        with flask_app.app_context():
+            manager = User.query.get(team_manager_user.id)
+            tournament_obj = Tournament.query.get(tournament.id)
+
+            team = Team(
+                team_id='TM5001',
+                name='Dashboard Squad',
+                department='Physics',
+                manager_name='Lead Manager',
+                manager_contact='8000000000',
+                created_by=manager.id,
+                managed_by=manager.id,
+                institution=manager.institution,
+            )
+            db.session.add(team)
+            db.session.flush()
+
+            association = TournamentTeam(
+                tournament_id=tournament_obj.id,
+                team_id=team.team_id,
+                registration_method='smc_invited',
+                status='pending',
+            )
+            db.session.add(association)
+
+            notification = Notification(
+                user_id=manager.id,
+                message='Review the tournament invitation.',
+                status='active',
+                kind='tournament_invite',
+            )
+            db.session.add(notification)
+            db.session.commit()
+
+        response = authenticated_team_manager.get('/team/dashboard')
+        assert response.status_code == 200
+        assert b'Team Manager Dashboard' in response.data
+        assert b'Dashboard Squad' in response.data
+        assert b'Review the tournament invitation.' in response.data
+        assert b'text-red-400">1<' in response.data
+
+
+class TestTeamNotifications:
+    """Test the notifications center for team managers."""
+
+    def test_notifications_filter_and_render(
+        self,
+        authenticated_team_manager,
+        flask_app,
+        team_manager_user,
+    ):
+        with flask_app.app_context():
+            manager = User.query.get(team_manager_user.id)
+
+            active_note = Notification(
+                user_id=manager.id,
+                message='Active invite pending action',
+                status='active',
+            )
+            archived_note = Notification(
+                user_id=manager.id,
+                message='Old archived update',
+                status='archived',
+            )
+            db.session.add_all([active_note, archived_note])
+            db.session.commit()
+
+        response = authenticated_team_manager.get('/team/notifications?status=active')
+        assert response.status_code == 200
+        assert b'Active invite pending action' in response.data
+        assert b'Old archived update' not in response.data
+
+    def test_mark_notification_resolved(
+        self,
+        authenticated_team_manager,
+        flask_app,
+        team_manager_user,
+    ):
+        with flask_app.app_context():
+            manager = User.query.get(team_manager_user.id)
+            notification = Notification(
+                user_id=manager.id,
+                message='Resolve this notification',
+                status='active',
+            )
+            db.session.add(notification)
+            db.session.commit()
+            note_id = notification.id
+
+        response = authenticated_team_manager.post(
+            f'/team/notifications/{note_id}/read?status=active',
+            data={'resolve': '1'},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+
+        with flask_app.app_context():
+            updated = Notification.query.get(note_id)
+            assert updated.status == 'resolved'
+            assert updated.is_read is True
+
+
+class TestInvitationResponses:
+    """Test team manager actions on SMC invitations."""
+
+    def test_accept_invitation_activates_association(
+        self,
+        authenticated_team_manager,
+        flask_app,
+        team_manager_user,
+        smc_user,
+        tournament,
+    ):
+        with flask_app.app_context():
+            manager = User.query.get(team_manager_user.id)
+            organizer = User.query.get(smc_user.id)
+            tournament_obj = Tournament.query.get(tournament.id)
+
+            team = Team(
+                team_id='TM6101',
+                name='Invite Acceptors',
+                department='Chemistry',
+                manager_name='Manager Accept',
+                manager_contact='8111111111',
+                created_by=manager.id,
+                managed_by=manager.id,
+                institution=manager.institution,
+            )
+            db.session.add(team)
+            db.session.flush()
+
+            association = TournamentTeam(
+                tournament_id=tournament_obj.id,
+                team_id=team.team_id,
+                registration_method='smc_invited',
+                status='pending',
+            )
+            db.session.add(association)
+            db.session.flush()
+
+            manager_note = Notification(
+                user_id=manager.id,
+                message='You have a tournament invitation.',
+                status='pending',
+                kind='tournament_invite',
+                context_type='tournament',
+                context_ref=str(tournament_obj.id),
+            )
+            db.session.add(manager_note)
+            db.session.commit()
+            assoc_id = association.id
+            manager_note_id = manager_note.id
+
+        response = authenticated_team_manager.post(
+            f'/team/tournament-team/{assoc_id}/respond',
+            data={'decision': 'accept'},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b'Invitation accepted' in response.data
+
+        with flask_app.app_context():
+            updated_assoc = TournamentTeam.query.get(assoc_id)
+            assert updated_assoc.status == 'active'
+            assert updated_assoc.approved_at is not None
+
+            resolved_note = Notification.query.get(manager_note_id)
+            assert resolved_note.status == 'resolved'
+            assert resolved_note.is_read is True
+
+            organizer_notes = Notification.query.filter_by(user_id=smc_user.id).all()
+            assert organizer_notes
+            assert any('accepted the invitation' in note.message for note in organizer_notes)
+
+    def test_decline_invitation_removes_association(
+        self,
+        authenticated_team_manager,
+        flask_app,
+        team_manager_user,
+        smc_user,
+        tournament,
+    ):
+        with flask_app.app_context():
+            manager = User.query.get(team_manager_user.id)
+            tournament_obj = Tournament.query.get(tournament.id)
+
+            team = Team(
+                team_id='TM6201',
+                name='Invite Decliners',
+                department='Biology',
+                manager_name='Manager Decline',
+                manager_contact='8222222222',
+                created_by=manager.id,
+                managed_by=manager.id,
+                institution=manager.institution,
+            )
+            db.session.add(team)
+            db.session.flush()
+
+            association = TournamentTeam(
+                tournament_id=tournament_obj.id,
+                team_id=team.team_id,
+                registration_method='smc_invited',
+                status='pending',
+            )
+            db.session.add(association)
+            db.session.flush()
+
+            manager_note = Notification(
+                user_id=manager.id,
+                message='Pending invitation decision required.',
+                status='pending',
+                kind='tournament_invite',
+                context_type='tournament',
+                context_ref=str(tournament_obj.id),
+            )
+            db.session.add(manager_note)
+            db.session.commit()
+            assoc_id = association.id
+            manager_note_id = manager_note.id
+
+        response = authenticated_team_manager.post(
+            f'/team/tournament-team/{assoc_id}/respond',
+            data={'decision': 'decline'},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b'Invitation declined' in response.data
+
+        with flask_app.app_context():
+            removed_assoc = TournamentTeam.query.get(assoc_id)
+            assert removed_assoc is None
+
+            resolved_note = Notification.query.get(manager_note_id)
+            assert resolved_note.status == 'resolved'
+
+            organizer_notes = Notification.query.filter_by(user_id=smc_user.id).all()
+            assert organizer_notes
+            assert any('declined the invitation' in note.message for note in organizer_notes)

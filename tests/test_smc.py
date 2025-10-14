@@ -421,7 +421,7 @@ class TestTournamentTeamModel:
             db.session.commit()
             
             assert tt.id is not None
-            assert tt.status == 'active'
+            assert tt.status == 'pending'
             assert tt.points == 0
 
     def test_tournament_team_unique_constraint(self, flask_app, tournament, team):

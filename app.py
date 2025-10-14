@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from models import db, User, Tournament, Team, Player, Match, TournamentTeam, init_default_data, get_default_tournament
 from datetime import datetime, timedelta, date
 from functools import wraps
 import os
-from blueprints.auth import auth_bp
+from blueprints.auth import auth_bp, load_current_user
+
 from blueprints.smc import smc_bp
 from blueprints.team import team_bp
 
@@ -42,6 +43,10 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(smc_bp)
 app.register_blueprint(team_bp)
 
+@app.before_request
+def before_request():
+    """Load current user before every request to ANY route"""
+    load_current_user()
 
 # Sprint 1 Decorators (DEPRECATED - kept for backward compatibility with old Sprint 1 routes)
 def require_smc_login(f):
@@ -169,10 +174,9 @@ def smc_dashboard():
 @require_smc_login
 def register_team():
     """UC_01: Register Player/Team - OLD ROUTE (use /smc/tournament/<id>/register-team instead)"""
+    tournament = get_default_tournament()
     if request.method == 'POST':
         try:        
-            tournament = get_default_tournament()
-
             team_name = request.form.get('team_name', '').strip()
             team_id = request.form.get('team_id', '').strip()
             department = request.form.get('department', '').strip()
@@ -212,7 +216,7 @@ def register_team():
                 manager_contact=manager_contact,
                 team_id=team_id,
                 created_by=current_user.id,
-                is_self_managed=False
+                institution=current_user.institution,
             )
 
             db.session.add(team)
@@ -231,15 +235,21 @@ def register_team():
                 i = players_added + 1
                 name = request.form.get(f'player_{i}_name', '').strip()
                 if name:
+                    roll_value = request.form.get(f'player_{i}_roll', '').strip()
+                    if not roll_value:
+                        flash(f'Roll number required for player {i}', 'error')
+                        db.session.rollback()
+                        return redirect(url_for('register_team'))
+
                     player = Player(
                         name=name,
-                        roll_number=int(request.form.get(f'player_{i}_roll', '')),
+                        roll_number=int(roll_value),
                         department=request.form.get(f'player_{i}_dept', team.department),
                         year=request.form.get(f'player_{i}_year', ''),
                         contact=request.form.get(f'player_{i}_contact', ''),
                         team_id=team.team_id
                     )
-                    
+
                     db.session.add(player)
                     players_added += 1
                 else:
@@ -248,12 +258,12 @@ def register_team():
             db.session.commit()
             flash(f'Team "{team.name}" registered successfully with {players_added} players! Team ID: {team.team_id}', 'success')
             return redirect(url_for('smc_dashboard'))
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f'Error registering team: {str(e)}', 'error')
-    
-    return render_template('register-team.html')
+
+    return render_template('register-team.html', tournament=tournament)
 
 @app.route('/schedule-matches', methods=['GET', 'POST'])
 @require_smc_login
