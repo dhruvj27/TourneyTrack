@@ -1,119 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Create Tournament – SMC Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Create Tournament • SMC</title>
+	<script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- 🔹 Navbar -->
-  <nav class="bg-gray-800 text-white px-6 py-4 flex items-center justify-between shadow">
-    <div class="flex items-center gap-6">
-      <a href="{{ url_for('index') }}" class="text-sm hover:text-blue-400 transition">← Home</a>
-      <a href="{{ url_for('smc.dashboard') }}" class="text-sm hover:text-blue-400 transition">🏠 Dashboard</a>
-      <h1 class="text-lg font-semibold tracking-wide">Create Tournament</h1>
-    </div>
+	<nav class="bg-gray-900 text-white shadow">
+		<div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+			<div class="flex items-center gap-6">
+				<a href="{{ url_for('smc.dashboard') }}" class="text-sm hover:text-blue-400 transition">← Dashboard</a>
+				<span class="text-lg font-semibold">Create Tournament</span>
+			</div>
+			<div class="flex items-center gap-4 text-sm">
+				<a href="{{ url_for('smc.notifications', status='active') }}" class="hover:text-blue-300">Notifications</a>
+				<span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+				<a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
+			</div>
+		</div>
+	</nav>
 
-    <div class="flex items-center gap-3">
-      <span class="text-sm text-gray-300">Welcome, {{ g.current_user.username }}</span>
-      <a href="{{ url_for('auth.logout') }}" 
-         class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-sm transition">
-         Logout
-      </a>
-    </div>
-  </nav>
+	{% with messages = get_flashed_messages(with_categories=true) %}
+		{% if messages %}
+			<div class="max-w-3xl mx-auto w-full px-4 mt-6">
+				<div class="space-y-2">
+					{% for category, message in messages %}
+						<div class="px-4 py-3 rounded border text-sm
+							{% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+							{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+							{% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+							{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+							{{ message }}
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		{% endif %}
+	{% endwith %}
 
-  <main class="max-w-3xl mx-auto flex-grow px-6 py-10">
+	<main class="flex-grow px-4 py-10">
+		<div class="max-w-3xl mx-auto bg-white border border-gray-200 rounded-xl shadow-sm p-8">
+			<h1 class="text-3xl font-semibold text-center text-gray-900">Create a New Tournament</h1>
+			<p class="text-sm text-gray-600 text-center mt-2">Set up the core information now; you can add teams, brackets, and schedules once the tournament exists.</p>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="space-y-3 mb-6">
-          {% for category, message in messages %}
-            <div
-              class="px-4 py-3 rounded-lg text-sm font-medium
-              {% if category == 'success' %} bg-green-50 text-green-800 border border-green-200
-              {% elif category == 'error' %} bg-red-50 text-red-800 border border-red-200
-              {% else %} bg-blue-50 text-blue-800 border border-blue-200
-              {% endif %}">
-              {{ message }}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+			<form method="POST" action="{{ url_for('smc.create_tournament') }}" class="mt-8 space-y-6">
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="name">Tournament Name<span class="text-red-500">*</span></label>
+					<input id="name" name="name" required value="{{ request.form.get('name', '') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
 
-    <!-- 🔹 Form Container -->
-    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
-      <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Create a New Tournament</h2>
+				<div class="grid gap-6 sm:grid-cols-2">
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1" for="start_date">Start Date<span class="text-red-500">*</span></label>
+						<input type="date" id="start_date" name="start_date" required value="{{ request.form.get('start_date', '') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1" for="end_date">End Date<span class="text-red-500">*</span></label>
+						<input type="date" id="end_date" name="end_date" required value="{{ request.form.get('end_date', '') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+					</div>
+				</div>
 
-      <form method="POST" action="{{ url_for('smc.create_tournament') }}" class="space-y-6">
+				<div class="grid gap-6 sm:grid-cols-2">
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1" for="institution">Institution / Scope</label>
+						<input id="institution" name="institution" value="{{ request.form.get('institution', '') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="eg. CS Department" />
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1" for="location">Location</label>
+						<input id="location" name="location" value="{{ request.form.get('location', '') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Campus court, online, etc." />
+					</div>
+				</div>
 
-        <!-- Tournament Name -->
-        <div>
-          <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
-            Tournament Name
-          </label>
-          <input type="text" id="name" name="name" required
-                 placeholder="e.g. Annual Sports Fest 2025"
-                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-gray-900 transition">
-        </div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="rules">Rules &amp; Notes</label>
+					<textarea id="rules" name="rules" rows="5" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Share format details, eligibility requirements, or scheduling notes.">{{ request.form.get('rules', '') }}</textarea>
+				</div>
 
-        <!-- Dates -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label for="start_date" class="block text-sm font-semibold text-gray-700 mb-2">
-              Start Date
-            </label>
-            <input type="date" id="start_date" name="start_date" required
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 transition">
-          </div>
+				<div class="flex justify-end gap-3">
+					<a href="{{ url_for('smc.dashboard') }}" class="px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700 transition">Cancel</a>
+					<button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">Create Tournament</button>
+				</div>
+			</form>
+		</div>
 
-          <div>
-            <label for="end_date" class="block text-sm font-semibold text-gray-700 mb-2">
-              End Date
-            </label>
-            <input type="date" id="end_date" name="end_date" required
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 transition">
-          </div>
-        </div>
+		<div class="max-w-3xl mx-auto mt-6 text-center text-sm text-gray-500">
+			Need to configure brackets or seedings? Create the tournament first, then use the dashboard tools to invite teams and schedule matches.
+		</div>
+	</main>
 
-        <!-- Rules -->
-        <div>
-          <label for="rules" class="block text-sm font-semibold text-gray-700 mb-2">
-            Tournament Rules (optional)
-          </label>
-          <textarea id="rules" name="rules" rows="5"
-                    placeholder="Enter general tournament guidelines, rules, or structure..."
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 transition"></textarea>
-        </div>
-
-        <!-- Submit Button -->
-        <div class="text-center">
-          <button type="submit"
-                  class="w-full sm:w-auto px-10 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow hover:from-blue-700 hover:to-blue-800 hover:shadow-lg transition">
-            ➕ Create Tournament
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Back Link -->
-    <div class="mt-6 text-center">
-      <a href="{{ url_for('smc.dashboard') }}" 
-         class="text-sm text-blue-600 hover:text-blue-800 font-medium transition">
-        ← Back to Dashboard
-      </a>
-    </div>
-
-  </main>
-
-  <!-- 🔹 Footer -->
-  <footer class="bg-gray-900 text-gray-400 text-center text-sm py-4 border-t border-gray-800">
-    © 2025 TourneyTrackers. All rights reserved.
-  </footer>
+	<footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+		© 2025 TourneyTrackers. All rights reserved.
+	</footer>
 
 </body>
 </html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Team • {{ team.name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('smc.view_team', team_id=team.team_id) }}" class="text-sm hover:text-blue-400 transition">← Back to team</a>
+        <span class="text-lg font-semibold">Edit {{ team.name }}</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('smc.dashboard') }}" class="hover:text-blue-300">Dashboard</a>
+        <span class="hidden sm:inline text-gray-300">Team ID: {{ team.team_id }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-4xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="flex-grow max-w-5xl mx-auto w-full px-4 pb-12 space-y-10">
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h1 class="text-2xl font-semibold text-gray-900">Team owner details</h1>
+      <p class="text-sm text-gray-600 mt-1">Update the contact person info kept on record for this team.</p>
+      <form method="POST" class="mt-6 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="manager_name">Manager Name</label>
+          <input id="manager_name" name="manager_name" value="{{ team.manager_name }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="manager_contact">Manager Contact</label>
+          <input id="manager_contact" name="manager_contact" value="{{ team.manager_contact or '' }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="department">Department</label>
+          <input id="department" name="department" value="{{ team.department }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Save changes</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Active players (read-only)</h2>
+      {% if players %}
+        <ul class="grid gap-4 md:grid-cols-2">
+          {% for player in players %}
+            <li class="border border-gray-200 rounded-md p-4 bg-gray-50">
+              <h3 class="font-semibold text-gray-900">{{ player.name }}</h3>
+              <p class="text-xs text-gray-500 mt-1">Roll: {{ player.roll_number }}</p>
+              {% if player.contact %}
+                <p class="text-xs text-gray-500">Contact: {{ player.contact }}</p>
+              {% endif %}
+              {% if player.department or player.year %}
+                <p class="text-xs text-gray-500">{{ player.department or 'Department N/A' }}{% if player.year %} • {{ player.year }}{% endif %}</p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-gray-500">No active players for this team.</p>
+      {% endif %}
+      <p class="mt-4 text-xs text-gray-500">Player edits must be coordinated with the team manager or handled through the in-app roster tools.</p>
+    </section>
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
+
+</body>
+</html>

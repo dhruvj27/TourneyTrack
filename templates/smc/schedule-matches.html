@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule Matches • {{ tournament.name }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="{{ url_for('smc.tournament_detail', tournament_id=tournament.id) }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 text-sm font-medium hover:bg-white/20 transition" aria-label="Back to tournament">
+          <span aria-hidden="true">←</span>
+          <span>{{ tournament.name }}</span>
+        </a>
+        <span class="text-lg font-semibold tracking-wide">Schedule Matches</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('smc.notifications', status='active') }}" class="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-white/10 transition" aria-label="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 01-3.46 0" />
+          </svg>
+          {% if unread_notification_count %}
+            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-xs font-semibold bg-blue-500 text-white rounded-full">{{ unread_notification_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-5xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <header class="max-w-5xl mx-auto w-full px-4 py-8 border-b border-gray-200">
+    <h1 class="text-3xl font-semibold text-gray-900">Plan the fixture list</h1>
+    <p class="text-sm text-gray-600 mt-2">Confirm teams, pick dates between {{ tournament.start_date.strftime('%b %d, %Y') }} and {{ tournament.end_date.strftime('%b %d, %Y') }}, and avoid venue clashes.</p>
+  </header>
+
+  <main class="flex-grow max-w-5xl mx-auto w-full px-4 pb-12 space-y-8">
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-gray-900">Add a match</h2>
+      <p class="text-sm text-gray-600 mt-1">Select two registered teams and define the match slot.</p>
+
+      <form method="POST" action="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}" class="mt-6 grid gap-4 md:grid-cols-2">
+        <div>
+          <label for="team1_id" class="block text-sm font-medium text-gray-700 mb-1">Team 1<span class="text-red-500">*</span></label>
+          <select id="team1_id" name="team1_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            <option value="" disabled selected>Select first team</option>
+            {% for t in teams %}
+              <option value="{{ t.team_id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="team2_id" class="block text-sm font-medium text-gray-700 mb-1">Team 2<span class="text-red-500">*</span></label>
+          <select id="team2_id" name="team2_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            <option value="" disabled selected>Select opponent</option>
+            {% for t in teams %}
+              <option value="{{ t.team_id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="match_date" class="block text-sm font-medium text-gray-700 mb-1">Date<span class="text-red-500">*</span></label>
+          <input type="date" id="match_date" name="date" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label for="match_time" class="block text-sm font-medium text-gray-700 mb-1">Time<span class="text-red-500">*</span></label>
+          <input type="time" id="match_time" name="time" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-2">
+          <label for="venue" class="block text-sm font-medium text-gray-700 mb-1">Venue<span class="text-red-500">*</span></label>
+          <input id="venue" name="venue" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Main arena, court, virtual link, etc." />
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">Schedule match</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-gray-900">Upcoming matches</h2>
+      {% if upcoming_matches %}
+        <ul class="mt-4 space-y-3 text-sm text-gray-700">
+          {% for m in upcoming_matches %}
+            <li class="border border-gray-200 rounded-md px-4 py-3 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="font-medium text-gray-900">{{ m.versus_display or (m.team1.name if m.team1 else m.team1_id) }}</p>
+                <p class="text-xs text-gray-500 mt-1">{{ m.date.strftime('%b %d, %Y') }} at {{ m.time.strftime('%H:%M') }} • {{ m.venue }}</p>
+              </div>
+              <span class="text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-100 text-blue-700">Scheduled</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-gray-500 mt-3">No matches scheduled yet. Add fixtures using the form above.</p>
+      {% endif %}
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h2 class="text-xl font-semibold text-gray-900">Completed matches</h2>
+      {% if completed_matches %}
+        <ul class="mt-4 space-y-3 text-sm text-gray-700">
+          {% for m in completed_matches %}
+            <li class="border border-gray-200 rounded-md px-4 py-3 bg-gray-50">
+              <p class="font-medium text-gray-900">{{ m.versus_display or (m.team1.name if m.team1 else m.team1_id) }}</p>
+              <p class="text-xs text-gray-500 mt-1">{{ m.date.strftime('%b %d, %Y') }} at {{ m.time.strftime('%H:%M') }} • {{ m.venue }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-gray-500 mt-3">Completed matches will appear here once results are recorded.</p>
+      {% endif %}
+    </section>
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">© 2025 TourneyTrackers. All rights reserved.</footer>
+
+  <script>
+    const team1Select = document.getElementById('team1_id');
+    const team2Select = document.getElementById('team2_id');
+
+    function preventDuplicateTeams() {
+      if (team1Select?.value && team2Select?.value && team1Select.value === team2Select.value) {
+        alert('Please choose two different teams for a match.');
+        team2Select.value = '';
+      }
+    }
+
+    team1Select?.addEventListener('change', preventDuplicateTeams);
+    team2Select?.addEventListener('change', preventDuplicateTeams);
+  </script>
+
+</body>
+</html>

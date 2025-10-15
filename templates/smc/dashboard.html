@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMC Dashboard • TourneyTrackers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 text-sm font-medium hover:bg-white/20 transition">
+          <span aria-hidden="true">🏠</span>
+          <span>Home</span>
+        </a>
+        <span class="text-lg font-semibold tracking-wide">SMC Dashboard</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('smc.dashboard') }}" class="hover:text-blue-300">Dashboard</a>
+        <a href="{{ url_for('smc.notifications', status='active') }}" class="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-white/10 transition" aria-label="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 01-3.46 0"></path>
+          </svg>
+          {% if unread_notification_count %}
+            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-xs font-semibold bg-blue-500 text-white rounded-full">{{ unread_notification_count }}</span>
+          {% endif %}
+        </a>
+        <span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-6xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <header class="max-w-6xl mx-auto w-full px-4 py-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-semibold text-gray-900">Welcome back, {{ g.current_user.username }}!</h1>
+        <p class="text-sm text-gray-600 mt-1">Monitor tournaments, keep schedules tidy, and stay on top of approvals.</p>
+      </div>
+      <a href="{{ url_for('smc.create_tournament') }}" class="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition">+ Create tournament</a>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12 space-y-10">
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-xs uppercase text-gray-500 tracking-wide">Total tournaments</p>
+        <p class="mt-2 text-3xl font-semibold text-gray-900">{{ stats.total_tournaments or 0 }}</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-xs uppercase text-gray-500 tracking-wide">Registered teams</p>
+        <p class="mt-2 text-3xl font-semibold text-gray-900">{{ stats.total_teams or 0 }}</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-xs uppercase text-gray-500 tracking-wide">Matches scheduled</p>
+        <p class="mt-2 text-3xl font-semibold text-gray-900">{{ stats.total_matches or 0 }}</p>
+      </div>
+      <div class="bg-white border border-amber-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-xs uppercase text-amber-700 tracking-wide">Pending reviews</p>
+        <p class="mt-2 text-3xl font-semibold text-amber-700">{{ (stats.pending_requests or 0) + (stats.pending_invites or 0) }}</p>
+      </div>
+    </section>
+
+    {% if pending_summary %}
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <header class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Pending reviews</h2>
+          <p class="text-sm text-gray-600">{{ stats.pending_requests }} join requests • {{ stats.pending_invites }} invitations awaiting responses</p>
+        </div>
+        <a href="#" onclick="document.getElementById('pending-reviews').scrollIntoView({behavior: 'smooth'}); return false;" class="text-sm text-blue-700 hover:underline">Jump to list</a>
+      </header>
+      <div id="pending-reviews" class="mt-4 space-y-4">
+        {% for entry in pending_summary %}
+        <article class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <header class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">{{ entry.tournament.name }}</h3>
+              <p class="text-xs text-gray-500">{{ entry.tournament.start_date.strftime('%b %d') }} – {{ entry.tournament.end_date.strftime('%b %d') }}</p>
+            </div>
+            <div class="flex gap-2 text-xs">
+              <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">{{ entry.requests|length }} requests</span>
+              <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">{{ entry.invites|length }} invites</span>
+            </div>
+          </header>
+          <div class="mt-4 grid gap-3 md:grid-cols-2">
+            {% if entry.requests %}
+            <div>
+              <p class="text-sm font-medium text-gray-800">Join requests</p>
+              <ul class="mt-2 space-y-2 text-sm text-gray-700">
+                {% for assoc in entry.requests[:3] %}
+                  <li class="border border-gray-200 rounded px-3 py-2 bg-white flex items-center justify-between gap-3">
+                    <div>
+                      <p class="font-semibold text-gray-900">{{ assoc.team.name }}</p>
+                      <p class="text-xs text-gray-500">Requested {{ assoc.requested_at.strftime('%b %d, %Y') }}</p>
+                    </div>
+                    <a href="{{ url_for('smc.pending_teams', tournament_id=entry.tournament.id) }}" class="text-xs text-blue-700 hover:underline">Review</a>
+                  </li>
+                {% endfor %}
+                {% if entry.requests|length > 3 %}
+                  <li class="text-xs text-gray-500">+{{ entry.requests|length - 3 }} more awaiting review</li>
+                {% endif %}
+              </ul>
+            </div>
+            {% endif %}
+            {% if entry.invites %}
+            <div>
+              <p class="text-sm font-medium text-gray-800">Outstanding invitations</p>
+              <ul class="mt-2 space-y-2 text-sm text-gray-700">
+                {% for assoc in entry.invites[:3] %}
+                  <li class="border border-blue-200 rounded px-3 py-2 bg-blue-50 flex items-center justify-between gap-3">
+                    <div>
+                      <p class="font-semibold text-blue-900">{{ assoc.team.name }}</p>
+                      <p class="text-xs text-blue-700">Invited {{ assoc.requested_at.strftime('%b %d, %Y') }}</p>
+                    </div>
+                    <a href="{{ url_for('smc.tournament_detail', tournament_id=entry.tournament.id) }}" class="text-xs text-blue-800 hover:underline">View</a>
+                  </li>
+                {% endfor %}
+                {% if entry.invites|length > 3 %}
+                  <li class="text-xs text-blue-700">+{{ entry.invites|length - 3 }} more awaiting manager response</li>
+                {% endif %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if live_matches or upcoming_matches or recent_results %}
+    <section class="grid gap-4 lg:grid-cols-3">
+      <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900">Live matches</h2>
+        {% if live_matches %}
+          <ul class="mt-3 space-y-3 text-sm text-gray-700">
+            {% for match in live_matches %}
+              <li class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                <div class="text-xs text-gray-500">{{ match.tournament.name }} • Started {{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') if match.time else 'TBD' }}</div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500 mt-3">No matches are live right now.</p>
+        {% endif %}
+      </article>
+
+      <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900">Upcoming fixtures</h2>
+        {% if upcoming_matches %}
+          <ul class="mt-3 space-y-3 text-sm text-gray-700">
+            {% for match in upcoming_matches %}
+              <li class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                <div class="text-xs text-gray-500">{{ match.tournament.name }} • {{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') if match.time else 'TBD' }} • {{ match.venue }}</div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500 mt-3">Schedule new fixtures to populate this timeline.</p>
+        {% endif %}
+      </article>
+
+      <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900">Recent results</h2>
+        {% if recent_results %}
+          <ul class="mt-3 space-y-3 text-sm text-gray-700">
+            {% for match in recent_results %}
+              <li class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                <div class="text-xs text-gray-500">{{ match.tournament.name }} • Played {{ match.date.strftime('%b %d, %Y') }} at {{ match.venue }}</div>
+                <div class="text-xs text-gray-600 mt-1">{{ match.score_display }}</div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500 mt-3">No recorded results yet. Publish scores from the results tool.</p>
+        {% endif %}
+      </article>
+    </section>
+    {% endif %}
+
+    <section class="grid gap-6 lg:grid-cols-3">
+      <div class="lg:col-span-2 space-y-6">
+        <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <header class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold text-gray-900">Your tournaments</h2>
+            <a href="{{ url_for('smc.notifications', status='active') }}" class="text-sm text-blue-700 hover:underline">Notifications</a>
+          </header>
+          {% if tournaments %}
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              {% for t in tournaments %}
+                <article class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h3 class="text-lg font-semibold text-gray-900">{{ t.name }}</h3>
+                  <p class="text-sm text-gray-600 mt-1">{{ t.start_date.strftime('%b %d, %Y') }} – {{ t.end_date.strftime('%b %d, %Y') }}</p>
+                  <p class="text-xs text-gray-500 mt-1">Status: {{ t.status|capitalize }}</p>
+                  <div class="mt-4 flex flex-wrap gap-2 text-sm">
+                    <a href="{{ url_for('smc.tournament_detail', tournament_id=t.id) }}" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition">Open details</a>
+                    <a href="{{ url_for('smc.pending_teams', tournament_id=t.id) }}" class="px-4 py-2 rounded border border-amber-200 text-amber-700 hover:bg-amber-50 transition">Pending teams</a>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-sm text-gray-500 mt-4">No tournaments created yet. Start by creating your first event.</p>
+          {% endif %}
+        </section>
+
+        <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-4">Need to take action?</h2>
+          <div class="grid gap-4 md:grid-cols-2">
+            <a href="{{ url_for('smc.create_tournament') }}" class="border border-blue-200 bg-blue-50 hover:bg-blue-100 transition rounded-lg px-4 py-4">
+              <h3 class="text-lg font-semibold text-blue-800">Create tournament</h3>
+              <p class="text-sm text-blue-700 mt-1">Spin up a new event with schedule and rules.</p>
+            </a>
+            <a href="{{ url_for('smc.pending_teams', tournament_id=tournaments[0].id) if tournaments else '#' }}" class="border border-amber-200 bg-amber-50 hover:bg-amber-100 transition rounded-lg px-4 py-4 {% if not tournaments %}pointer-events-none opacity-60{% endif %}">
+              <h3 class="text-lg font-semibold text-amber-800">Review join requests</h3>
+              <p class="text-sm text-amber-700 mt-1">{{ stats.pending_requests }} join requests • {{ stats.pending_invites }} invites open.</p>
+            </a>
+          </div>
+        </section>
+      </div>
+
+      <aside class="space-y-6">
+        <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-900">Quick links</h2>
+          <div class="mt-4 space-y-3 text-sm">
+            <a href="{{ url_for('smc.create_tournament') }}" class="block px-4 py-2 rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition">Create tournament</a>
+            <a href="{{ url_for('smc.notifications', status='active') }}" class="block px-4 py-2 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 transition">Notification center</a>
+            <a href="{{ url_for('smc.dashboard') }}" class="block px-4 py-2 rounded border border-gray-200 text-gray-700 hover:bg-gray-100 transition">Refresh dashboard</a>
+          </div>
+        </section>
+
+        <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-900">Recent notifications</h2>
+          {% if notifications_preview %}
+            <ul class="mt-3 space-y-3 text-sm">
+              {% for note in notifications_preview %}
+                <li class="border border-gray-200 rounded-md px-3 py-2">
+                  <p class="font-medium text-gray-800">{{ note.message }}</p>
+                  <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                    <span>{{ note.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                    <span class="uppercase tracking-wider">{{ note.status }}</span>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm text-gray-500 mt-3">No notifications yet. Updates from tournaments will appear here.</p>
+          {% endif %}
+        </section>
+      </aside>
+    </section>
+
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">© 2025 TourneyTrackers. All rights reserved.</footer>
+
+</body>
+</html>

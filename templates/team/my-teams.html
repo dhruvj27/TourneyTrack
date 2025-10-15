@@ -3,115 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Teams – TourneyTrackers</title>
+  <title>My Teams • Team Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex flex-col">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- 🔹 Navbar -->
-  <nav class="bg-black/60 backdrop-blur border-b border-gray-700">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-      <a href="{{ url_for('team.my_teams') }}" class="text-2xl font-bold tracking-wide text-white hover:text-blue-400 transition">
-        TourneyTrackers
-      </a>
-      <div class="flex items-center gap-4 text-sm flex-wrap justify-end">
-        <span class="text-gray-300">👤 {{ g.current_user.username }}</span>
-        <a href="{{ url_for('team.my_teams') }}" class="text-blue-400 font-semibold underline">My Teams</a>
-        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-400 transition">Browse Tournaments</a>
-        <a href="{{ url_for('auth.logout') }}" class="hover:text-red-400 transition">Logout</a>
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('team.dashboard_overview') }}" class="text-sm hover:text-blue-400 transition">← Dashboard</a>
+        <span class="text-lg font-semibold">My Teams</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-300">Browse Tournaments</a>
+        <a href="{{ url_for('team.notifications', status='active') }}" class="hover:text-blue-300">Notifications</a>
+        <span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
       </div>
     </div>
   </nav>
 
-  <!-- 🔹 Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="max-w-4xl w-full mx-auto mt-6 space-y-3 px-4">
-        {% for category, message in messages %}
-          <div class="p-3 rounded-lg text-sm font-medium 
-            {% if category == 'error' %} bg-red-500/80 
-            {% elif category == 'success' %} bg-green-500/80 
-            {% else %} bg-blue-500/80 
-            {% endif %}">
-            {{ message }}
-          </div>
-        {% endfor %}
+      <div class="max-w-4xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
   {% endwith %}
 
-  <!-- 🔹 Header -->
-  <header class="max-w-6xl mx-auto flex flex-wrap items-center justify-between px-6 py-8 border-b border-gray-700 gap-4">
-    <h1 class="text-3xl font-bold text-white">My Teams</h1>
-    <a href="{{ url_for('team.create_team') }}"
-       class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-blue-500/30 transition whitespace-nowrap">
-      + Create New Team
-    </a>
+  <header class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900">Teams you manage</h1>
+      <p class="text-sm text-gray-600 mt-1">Monitor rosters, tournament participation, and quick actions per team.</p>
+    </div>
+    <a href="{{ url_for('team.create_team') }}" class="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition">+ Create Team</a>
   </header>
 
-  <!-- 🔹 Main Content -->
-  <main class="flex-grow max-w-6xl mx-auto px-6 py-10">
-
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12">
     {% if team_data %}
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {% for data in team_data %}
-        <div class="flex flex-col justify-between bg-gray-800/70 border border-gray-700 rounded-2xl shadow-md hover:shadow-blue-500/20 transition overflow-hidden min-h-[320px]">
-
-          <!-- Team Header -->
-          <div class="bg-gray-900/70 px-5 py-4 border-b border-gray-700">
-            <h3 class="text-xl font-bold text-white truncate">{{ data.team.name }}</h3>
-            <p class="text-sm text-gray-400">Team ID: {{ data.team.team_id }}</p>
-          </div>
-
-          <!-- Team Info -->
-          <div class="p-5 flex-1 space-y-3 text-gray-300 text-sm">
-            <p><span class="font-semibold text-gray-200">Department:</span> {{ data.team.department }}</p>
-            <p><span class="font-semibold text-gray-200">Manager:</span> {{ data.team.manager_name }}</p>
-          </div>
-
-          <!-- Stats -->
-          <div class="flex justify-around border-t border-gray-700 py-3 bg-gray-900/40">
-            <div class="text-center">
-              <div class="text-2xl font-bold text-blue-400">{{ data.player_count }}</div>
-              <div class="text-xs uppercase tracking-wide text-gray-400">Players</div>
+      <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {% for entry in team_data %}
+          {% set team = entry.team %}
+          <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 flex flex-col">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ team.name }}</h2>
+              <p class="text-sm text-gray-600 mt-1">Team ID: {{ team.team_id }} • Department: {{ team.department }}</p>
+              <p class="text-xs text-gray-500 mt-1">Manager: {{ team.manager_name }}{% if team.manager_contact %} • {{ team.manager_contact }}{% endif %}</p>
             </div>
-            <div class="text-center">
-              <div class="text-2xl font-bold text-emerald-400">{{ data.tournament_count }}</div>
-              <div class="text-xs uppercase tracking-wide text-gray-400">Tournaments</div>
+            <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-center">
+                <dt class="text-xs text-gray-500 uppercase tracking-wide">Players</dt>
+                <dd class="text-lg font-semibold text-gray-900">{{ entry.player_count }}</dd>
+              </div>
+              <div class="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-center">
+                <dt class="text-xs text-gray-500 uppercase tracking-wide">Tournaments</dt>
+                <dd class="text-lg font-semibold text-gray-900">{{ entry.tournament_count }}</dd>
+              </div>
+            </dl>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <a href="{{ url_for('team.team_detail', team_id=team.team_id) }}" class="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Open Dashboard</a>
+              <a href="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="px-4 py-2 rounded border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-50 transition">Manage Roster</a>
             </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex flex-wrap justify-between items-center gap-3 px-5 py-4 border-t border-gray-700 bg-gray-900/70">
-            <a href="{{ url_for('team.dashboard', team_id=data.team.team_id) }}"
-               class="flex-1 text-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition">
-              View Dashboard
-            </a>
-            <a href="{{ url_for('team.update_profile', team_id=data.team.team_id) }}"
-               class="flex-1 text-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition">
-              Edit Profile
-            </a>
-          </div>
-
-        </div>
+          </article>
         {% endfor %}
       </div>
     {% else %}
-      <div class="text-center py-20">
-        <h3 class="text-xl font-semibold mb-3 text-gray-300">You haven’t created any teams yet.</h3>
-        <p class="text-gray-400 mb-6">Start by creating your first team to manage tournaments.</p>
-        <a href="{{ url_for('team.create_team') }}"
-           class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-blue-500/30 transition">
-          + Create Your First Team
-        </a>
+      <div class="bg-white border border-dashed border-gray-300 rounded-lg p-12 text-center">
+        <h2 class="text-xl font-semibold text-gray-900">No teams yet</h2>
+        <p class="text-sm text-gray-600 mt-2">Create a team to start joining tournaments and managing players.</p>
+        <a href="{{ url_for('team.create_team') }}" class="inline-flex items-center justify-center px-5 py-2 mt-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Create Team</a>
       </div>
     {% endif %}
   </main>
 
-  <!-- 🔹 Footer -->
-  <footer class="text-center py-4 text-sm text-gray-500 border-t border-gray-800">
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
     © 2025 TourneyTrackers. All rights reserved.
   </footer>
+
 </body>
 </html>
