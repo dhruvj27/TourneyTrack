@@ -98,9 +98,10 @@ def register():
         password = request.form['password'].strip()
         role = request.form['role']
         institution = request.form.get('institution', '').strip() or None
-        
+        phone_number = request.form.get('phone_number', '').strip() or None
+
         # Validate format (no DB queries)
-        errors = User.validate_format(username, email, password, role)
+        errors = User.validate_format(username, email, password, role, phone_number)
 
         # Check uniqueness (requires DB queries)
         if not errors:
@@ -117,7 +118,13 @@ def register():
             )
         
         # Create user
-        user = User(username=username, email=email, role=role, institution=institution)
+        user = User(
+            username=username,
+            email=email,
+            role=role,
+            institution=institution,
+            phone_number=phone_number,
+        )
         user.set_password(password)
         
         try:

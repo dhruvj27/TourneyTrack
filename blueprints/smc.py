@@ -14,6 +14,7 @@ from models import (
     Match,
     TournamentTeam,
     Notification,
+    get_default_tournament,
 )
 from blueprints.auth import require_smc
 
@@ -21,21 +22,36 @@ smc_bp = Blueprint('smc', __name__, url_prefix='/smc')
 IST = pytz.timezone('Asia/Kolkata')
 
 
+def _generate_team_id() -> str:
+    """Generate next available team identifier in TM0001 format."""
+    last_team = Team.query.order_by(Team.id.desc()).first()
+    if last_team and last_team.team_id and last_team.team_id.startswith('TM'):
+        try:
+            next_num = int(last_team.team_id[2:]) + 1
+        except ValueError:
+            next_num = Team.query.count() + 1
+    else:
+        next_num = 1
+    return f"TM{next_num:04d}"
+
+
 def _smc_can_access_team(team: Team) -> bool:
     if team.created_by == g.current_user.id:
         return True
-    for assoc in team.tournament_teams:
-        if assoc.tournament and assoc.tournament.created_by == g.current_user.id:
-            return True
-    return False
+    return any(
+        assoc.tournament and assoc.tournament.created_by == g.current_user.id
+        for assoc in team.tournament_teams
+    )
 
 def require_tournament_access(f):
     """Require SMC owns the tournament"""
     @wraps(f)
     def decorated_function(tournament_id, *args, **kwargs):
         tournament = Tournament.query.get_or_404(tournament_id)
-        
-        if tournament.created_by != g.current_user.id:
+        default_tournament = get_default_tournament()
+        allowed_default = default_tournament and default_tournament.id == tournament.id
+
+        if tournament.created_by != g.current_user.id and not allowed_default:
             flash('You do not have access to this tournament.', 'error')
             return redirect(url_for('smc.dashboard'))
         g.tournament_context = tournament
@@ -54,21 +70,90 @@ def dashboard():
     total_teams = sum(len(t.tournament_teams) for t in my_tournaments)
     total_matches = sum(len(t.matches) for t in my_tournaments)
     
+    pending_summary = []
+    total_pending_requests = 0
+    total_pending_invites = 0
+
+    for tournament in my_tournaments:
+        requests = [
+            assoc
+            for assoc in tournament.tournament_teams
+            if assoc.status == 'pending' and assoc.registration_method != 'smc_invited'
+        ]
+        invites = [
+            assoc
+            for assoc in tournament.tournament_teams
+            if assoc.status == 'pending' and assoc.registration_method == 'smc_invited'
+        ]
+
+        if requests or invites:
+            pending_summary.append(
+                {
+                    'tournament': tournament,
+                    'requests': requests,
+                    'invites': invites,
+                }
+            )
+
+        total_pending_requests += len(requests)
+        total_pending_invites += len(invites)
+
     stats = {
         'total_tournaments': total_tournaments,
         'total_teams': total_teams,
-        'total_matches': total_matches
+        'total_matches': total_matches,
+        'pending_requests': total_pending_requests,
+        'pending_invites': total_pending_invites,
     }
     
+    tournament_ids = [t.id for t in my_tournaments]
+    live_matches = []
+    upcoming_matches = []
+    recent_results = []
+
+    if tournament_ids:
+        live_matches = (
+            Match.query.options(joinedload(Match.team1), joinedload(Match.team2))
+            .filter(Match.tournament_id.in_(tournament_ids), Match.status == 'active')
+            .order_by(Match.date.desc(), Match.time.desc())
+            .limit(3)
+            .all()
+        )
+
+        today = date.today()
+        upcoming_matches = (
+            Match.query.options(joinedload(Match.team1), joinedload(Match.team2))
+            .filter(
+                Match.tournament_id.in_(tournament_ids),
+                Match.status == 'scheduled',
+                Match.date >= today,
+            )
+            .order_by(Match.date.asc(), Match.time.asc())
+            .limit(5)
+            .all()
+        )
+
+        recent_results = (
+            Match.query.options(joinedload(Match.team1), joinedload(Match.team2))
+            .filter(Match.tournament_id.in_(tournament_ids), Match.status == 'completed')
+            .order_by(Match.date.desc(), Match.time.desc())
+            .limit(5)
+            .all()
+        )
+
     notifications_preview = Notification.active_for_user(g.current_user.id).limit(6).all()
     unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
 
     return render_template(
-        'smc-dashboard.html',
+        'smc/dashboard.html',
         tournaments=my_tournaments,
         stats=stats,
         notifications_preview=notifications_preview,
         unread_notification_count=unread_count,
+        live_matches=live_matches,
+        upcoming_matches=upcoming_matches,
+        recent_results=recent_results,
+        pending_summary=pending_summary,
     )
 
 
@@ -132,6 +217,8 @@ def notifications():
 
     if status_filter == 'archived':
         query = query.filter(Notification.status == 'archived')
+    elif status_filter == 'resolved':
+        query = query.filter(Notification.status == 'resolved')
     elif status_filter == 'all':
         pass
     else:
@@ -165,6 +252,8 @@ def tournament_detail(tournament_id):
     """View tournament details and stats"""
     tournament = Tournament.query.get_or_404(tournament_id)
     
+    unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
+
     stats = {
         'total_teams': len(tournament.tournament_teams),
         'active_teams': len([tt for tt in tournament.tournament_teams if tt.status == 'active']),
@@ -174,17 +263,52 @@ def tournament_detail(tournament_id):
     }
     
     # Get teams in this tournament
-    tournament_teams = tournament.tournament_teams
+    confirmed_associations = [
+        assoc
+        for assoc in tournament.tournament_teams
+        if assoc.status in {'active', 'champion', 'eliminated'}
+    ]
+    smc_managed_teams = [
+        assoc
+        for assoc in confirmed_associations
+        if assoc.team and not assoc.team.is_self_managed
+    ]
+    self_managed_teams = [
+        assoc
+        for assoc in confirmed_associations
+        if assoc.team and assoc.team.is_self_managed
+    ]
+    invited_teams = [
+        assoc
+        for assoc in tournament.tournament_teams
+        if assoc.status == 'pending' and assoc.registration_method == 'smc_invited'
+    ]
+    pending_requests = [
+        assoc
+        for assoc in tournament.tournament_teams
+        if assoc.status == 'pending' and assoc.registration_method != 'smc_invited'
+    ]
     
     # Get upcoming matches
     upcoming_matches = [m for m in tournament.matches if m.is_upcoming]
     upcoming_matches.sort(key=lambda x: (x.date, x.time))
+
+    completed_matches = [m for m in tournament.matches if m.status == 'completed']
+    completed_matches.sort(key=lambda x: (x.date, x.time), reverse=True)
     
-    return render_template('smc/tournament-detail.html',
-                         tournament=tournament,
-                         stats=stats,
-                         tournament_teams=tournament_teams,
-                         upcoming_matches=upcoming_matches[:5])
+    return render_template(
+        'smc/tournament-detail.html',
+        tournament=tournament,
+        stats=stats,
+        tournament_teams=confirmed_associations,
+        smc_managed_teams=smc_managed_teams,
+        self_managed_teams=self_managed_teams,
+        upcoming_matches=upcoming_matches[:5],
+        completed_matches=completed_matches[:10],
+        invited_teams=invited_teams,
+        pending_requests=pending_requests,
+        unread_notification_count=unread_count,
+    )
 
 
 @smc_bp.route('/tournament/<int:tournament_id>/pending-teams')
@@ -193,13 +317,20 @@ def tournament_detail(tournament_id):
 def pending_teams(tournament_id):
     """List pending team join requests for a tournament."""
     tournament = g.get('tournament_context') or Tournament.query.get_or_404(tournament_id)
+    unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
     pending = (
         TournamentTeam.query.options(joinedload(TournamentTeam.team))
         .filter_by(tournament_id=tournament_id, status='pending')
+        .filter(TournamentTeam.registration_method != 'smc_invited')
         .order_by(TournamentTeam.requested_at.asc())
         .all()
     )
-    return render_template('smc/pending-teams.html', tournament=tournament, pending_teams=pending)
+    return render_template(
+        'smc/pending-teams.html',
+        tournament=tournament,
+        pending_teams=pending,
+        unread_notification_count=unread_count,
+    )
 
 
 @smc_bp.route('/tournament/<int:tournament_id>/register-team', methods=['GET', 'POST'])
@@ -208,6 +339,7 @@ def pending_teams(tournament_id):
 def register_team(tournament_id):
     """Register a new team for this tournament"""
     tournament = Tournament.query.get_or_404(tournament_id)
+    unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
     
     if request.method == 'POST':
         try:
@@ -235,6 +367,7 @@ def register_team(tournament_id):
                 assoc = tournament.add_team(team, added_by=g.current_user, method='smc_invited', auto_commit=True)
 
                 if team.manager:
+                    context_ref = f"{tournament.id}:{team.team_id}"
                     team.manager.notify(
                         f'Your team "{team.name}" was invited to join {tournament.name}.',
                         category='info',
@@ -242,7 +375,8 @@ def register_team(tournament_id):
                         status='pending',
                         link_target=url_for('team.browse_tournaments'),
                         context_type='tournament',
-                        context_ref=str(tournament.id),
+                        context_ref=context_ref,
+                        actor_id=getattr(g.current_user, 'id', None),
                         commit=True,
                     )
                 flash('Invitation sent to team manager.', 'success')
@@ -250,70 +384,38 @@ def register_team(tournament_id):
 
             # Create or update team directly under SMC
             team_name = request.form.get('team_name', '').strip()
-            team_id = request.form.get('team_id', '').strip()
             department = request.form.get('department', '').strip()
-            manager_name = request.form.get('manager_name', '').strip()
-            manager_contact = request.form.get('manager_contact', '').strip()
-            manager_username = request.form.get('manager_username', '').strip()
+            team_institution = request.form.get('team_institution', '').strip()
 
-            if not team_id or not team_name or not department or not manager_name:
-                flash('Team ID, name, department, and manager name are required.', 'error')
+            if not team_name or not department:
+                flash('Team name and department are required.', 'error')
                 return redirect(url_for('smc.register_team', tournament_id=tournament_id))
 
-            if Team.query.filter_by(team_id=team_id).first():
-                flash('Team ID already exists. Use invite flow instead.', 'error')
-                return redirect(url_for('smc.register_team', tournament_id=tournament_id))
+            generated_team_id = _generate_team_id()
+            while Team.query.filter_by(team_id=generated_team_id).first():
+                generated_team_id = _generate_team_id()
 
-            team_institution = tournament.institution or g.current_user.institution
+            if not team_institution:
+                team_institution = tournament.institution or g.current_user.institution
 
             team = Team(
                 name=team_name,
                 department=department,
-                manager_name=manager_name,
-                manager_contact=manager_contact,
-                team_id=team_id,
+                team_id=generated_team_id,
                 created_by=g.current_user.id,
+                managed_by=g.current_user.id,
+                manager_name='Unassigned',
                 institution=team_institution,
             )
 
             db.session.add(team)
             db.session.flush()
 
-            assigned_manager = None
-            if manager_username:
-                assigned_manager = User.query.filter_by(username=manager_username, role='team_manager').first()
-                if not assigned_manager:
-                    db.session.rollback()
-                    flash('Manager username was not found.', 'error')
-                    return redirect(url_for('smc.register_team', tournament_id=tournament_id))
-                team.assign_manager(assigned_manager)
-
             assoc = tournament.add_team(team, added_by=g.current_user, method='smc_added')
-
-            players_added = 0
-            index = 1
-            while True:
-                player_name = request.form.get(f'player_{index}_name', '').strip()
-                if not player_name:
-                    break
-
-                roll_number = request.form.get(f'player_{index}_roll', '').strip()
-                if roll_number:
-                    player = Player(
-                        name=player_name,
-                        roll_number=int(roll_number),
-                        department=request.form.get(f'player_{index}_dept', department),
-                        year=request.form.get(f'player_{index}_year', ''),
-                        contact=request.form.get(f'player_{index}_contact', ''),
-                        team_id=team.team_id,
-                    )
-                    db.session.add(player)
-                    players_added += 1
-                index += 1
 
             db.session.commit()
 
-            flash(f'Team "{team.name}" registered successfully with {players_added} players.', 'success')
+            flash(f'Team "{team.name}" registered successfully. Team ID: {team.team_id}', 'success')
             return redirect(url_for('smc.tournament_detail', tournament_id=tournament_id))
             
         except Exception as e:
@@ -328,7 +430,12 @@ def register_team(tournament_id):
         candidate_query = candidate_query.filter(Team.team_id.notin_(existing_team_ids))
     candidate_teams = candidate_query.order_by(Team.name).all()
 
-    return render_template('register-team.html', tournament=tournament, candidate_teams=candidate_teams)
+    return render_template(
+        'smc/register-team.html',
+        tournament=tournament,
+        candidate_teams=candidate_teams,
+        unread_notification_count=unread_count,
+    )
 
 @smc_bp.route('/tournament/<int:tournament_id>/approve-team/<team_id>', methods=['POST'])
 @require_smc
@@ -350,9 +457,20 @@ def approve_team(tournament_id, team_id):
         action = request.form.get('action')
         team = tt.team
         manager_user = getattr(team, 'manager', None)
+        context_ref = f"{tournament.id}:{team.team_id}"
+        smc_notes = Notification.query.filter(
+            Notification.user_id == g.current_user.id,
+            Notification.context_type == 'tournament',
+            Notification.kind == 'tournament_request',
+            Notification.status == 'pending',
+            Notification.context_ref.in_([context_ref, str(tournament.id)]),
+        ).all()
 
         if action == 'approve':
             tt.set_status('active', actor=g.current_user)
+            for note in smc_notes:
+                note.message = f'Approved: {team.name} will compete in {tournament.name}.'
+                note.resolve()
             db.session.commit()
             if manager_user:
                 manager_user.notify(
@@ -362,11 +480,15 @@ def approve_team(tournament_id, team_id):
                     status='active',
                     link_target=url_for('team.team_detail', team_id=team.team_id),
                     context_type='tournament',
-                    context_ref=str(tournament.id),
+                    context_ref=context_ref,
+                    actor_id=getattr(g.current_user, 'id', None),
                     commit=True,
                 )
             flash('Team approved successfully.', 'success')
         elif action == 'reject':
+            for note in smc_notes:
+                note.message = f'Rejected: {team.name} will not participate in {tournament.name}.'
+                note.resolve()
             db.session.delete(tt)
             db.session.commit()
             if manager_user:
@@ -374,9 +496,10 @@ def approve_team(tournament_id, team_id):
                     f'Your team "{team.name}" invitation to {tournament.name} was declined.',
                     category='warning',
                     kind='tournament_request',
-                    status='resolved',
+                    status='active',
                     context_type='tournament',
-                    context_ref=str(tournament.id),
+                    context_ref=context_ref,
+                    actor_id=getattr(g.current_user, 'id', None),
                     commit=True,
                 )
             flash('Team request rejected.', 'info')
@@ -394,6 +517,7 @@ def approve_team(tournament_id, team_id):
 def schedule_matches(tournament_id):
     """Schedule matches for this tournament"""
     tournament = Tournament.query.get_or_404(tournament_id)
+    unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
 
     if request.method == 'POST':
         try:
@@ -476,11 +600,12 @@ def schedule_matches(tournament_id):
     upcoming_matches = [m for m in all_matches if m.is_upcoming]
     completed_matches = [m for m in all_matches if m.status == 'completed']
 
-    return render_template('schedule-matches.html',
+    return render_template('smc/schedule-matches.html',
                            tournament=tournament,
                            teams=tournament_teams,
                            upcoming_matches=upcoming_matches,
-                           completed_matches=completed_matches)
+                           completed_matches=completed_matches,
+                           unread_notification_count=unread_count)
 
 
 @smc_bp.route('/tournament/<int:tournament_id>/add-results', methods=['GET', 'POST'])
@@ -489,6 +614,7 @@ def schedule_matches(tournament_id):
 def add_results(tournament_id):
     """Add results for matches in this tournament"""
     tournament = Tournament.query.get_or_404(tournament_id)
+    unread_count = Notification.query.filter_by(user_id=g.current_user.id, is_read=False).count()
     
     if request.method == 'POST':
         try:
@@ -549,11 +675,12 @@ def add_results(tournament_id):
     # Get teams for winner dropdown
     teams = tournament.get_teams()
 
-    return render_template('add-results.html',
+    return render_template('smc/add-results.html',
                          tournament=tournament,
                          pending_matches=pending_matches,
                          completed_matches=completed_matches,
-                         teams=teams)
+                         teams=teams,
+                         unread_notification_count=unread_count)
 
 
 @smc_bp.route('/team/<team_id>/view')
@@ -624,7 +751,7 @@ def assign_manager(team_id):
         flash('Team manager account not found.', 'error')
         return redirect(url_for('smc.view_team', team_id=team_id))
 
-    team.assign_manager(manager)
+    team.assign_manager(manager, actor_id=getattr(g.current_user, 'id', None))
     db.session.commit()
 
     flash('Team manager assigned.', 'success')

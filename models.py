@@ -3,7 +3,7 @@ import re
 import pytz
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
+from sqlalchemy import or_, inspect, text
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -32,6 +32,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'smc' or 'team_manager'
     institution = db.Column(db.String(100))
+    phone_number = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=current_time)
 
     tournaments_created = db.relationship(
@@ -44,7 +45,11 @@ class User(db.Model):
         'Team', backref='manager', lazy=True, foreign_keys='Team.managed_by'
     )
     notifications = db.relationship(
-        'Notification', backref='user', lazy=True, cascade='all, delete-orphan'
+        'Notification',
+        backref='user',
+        lazy=True,
+        cascade='all, delete-orphan',
+        foreign_keys='Notification.user_id',
     )
 
     def __repr__(self):  # pragma: no cover - debug helper
@@ -65,9 +70,12 @@ class User(db.Model):
         link_target: str = None,
         context_type: str = None,
         context_ref: str = None,
+        actor_id: int | None = None,
         commit: bool = False,
     ):
-        """Create an in-app notification entry."""
+        """Create an in-app notification entry for a user."""
+        if actor_id is not None and actor_id == self.id:
+            return None
         note = Notification(
             user_id=self.id,
             message=message,
@@ -77,6 +85,7 @@ class User(db.Model):
             context_type=context_type,
             context_ref=context_ref,
             link_target=link_target,
+            actor_id=actor_id,
         )
         db.session.add(note)
         if commit:
@@ -84,7 +93,13 @@ class User(db.Model):
         return note
 
     @staticmethod
-    def validate_format(username: str, email: str, password: str, role: str) -> list[str]:
+    def validate_format(
+        username: str,
+        email: str,
+        password: str,
+        role: str,
+        phone_number: str | None = None,
+    ) -> list[str]:
         """Validate registration data format without using the database."""
         errors: list[str] = []
 
@@ -110,6 +125,11 @@ class User(db.Model):
         if role not in ['smc', 'team_manager']:
             errors.append("Invalid role selected")
 
+        if phone_number:
+            phone_pattern = r'^\+?[0-9\s-]{7,15}$'
+            if not re.fullmatch(phone_pattern, phone_number):
+                errors.append("Phone number must contain 7-15 digits and may include + or -")
+
         return errors
 
 class Notification(db.Model):
@@ -129,9 +149,12 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=current_time)
     expires_at = db.Column(db.DateTime)
+    actor_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     def __repr__(self):  # pragma: no cover - debug helper
         return f"<Notification {self.id} user={self.user_id} status={self.status}>"
+
+    actor = db.relationship('User', foreign_keys=[actor_id], backref='notifications_triggered')
 
     def activate(self):
         self.status = 'active'
@@ -143,7 +166,7 @@ class Notification(db.Model):
 
     @classmethod
     def active_for_user(cls, user_id: int):
-        query = cls.query.filter_by(user_id=user_id).filter(cls.status == 'active')
+        query = cls.query.filter_by(user_id=user_id).filter(cls.status.in_(['pending', 'active']))
         query = query.filter(
             or_(cls.expires_at.is_(None), cls.expires_at > current_time())
         )
@@ -228,11 +251,16 @@ class Tournament(db.Model):
         db.session.add(assoc)
 
         if status == 'active' and team.manager:
-            team.manager.notify(
-                f'{team.name} was added to tournament {self.name}.',
-                category='success',
-                link_target=f'/team/team/{team.team_id}',
-            )
+            actor_id = getattr(added_by, 'id', None)
+            if actor_id is None or team.manager.id != actor_id:
+                team.manager.notify(
+                    f'{team.name} was added to tournament {self.name}.',
+                    category='success',
+                    link_target=f'/team/team/{team.team_id}',
+                    context_type='tournament',
+                    context_ref=str(self.id),
+                    actor_id=actor_id,
+                )
 
         if auto_commit:
             db.session.commit()
@@ -312,16 +340,22 @@ class Team(db.Model):
         super().__init__(**kwargs)
         if self.managed_by is None and self.created_by is not None:
             self.managed_by = self.created_by
+        if not self.manager_name:
+            self.manager_name = 'Unassigned'
 
     def __repr__(self):  # pragma: no cover - debug helper
         return f"<Team {self.team_id} {self.name}>"
 
     @property
     def is_self_managed(self) -> bool:
-        return self.created_by == self.managed_by
+        manager_user = getattr(self, 'manager', None)
+        return bool(manager_user and manager_user.role == 'team_manager')
 
-    def assign_manager(self, user):
+    def assign_manager(self, user, actor_id: int | None = None):
         self.managed_by = user.id
+        self.manager_name = getattr(user, 'username', self.manager_name)
+        if getattr(user, 'phone_number', None):
+            self.manager_contact = user.phone_number
         if getattr(user, 'role', None) == 'team_manager':
             user.notify(
                 f'You are now managing team {self.name}.',
@@ -329,6 +363,7 @@ class Team(db.Model):
                 kind='team_assignment',
                 status='active',
                 link_target=f'/team/team/{self.team_id}',
+                actor_id=actor_id,
                 commit=False,
             )
 
@@ -434,6 +469,8 @@ class Match(db.Model):
 def init_default_data():
     """Initialize default data for the application."""
 
+    ensure_schema_integrity()
+
     admin = User.query.filter_by(username='admin').first()
     if not admin:
         admin = User(
@@ -472,3 +509,27 @@ def init_default_data():
 def get_default_tournament():
     """Get the default tournament."""
     return Tournament.query.filter_by(name='Inter-Department Sports Tournament 2025').first()
+
+
+def ensure_schema_integrity():
+    """Apply lightweight schema updates required for new fields."""
+
+    inspector = inspect(db.engine)
+
+    try:
+        user_columns = {col['name'] for col in inspector.get_columns('users')}
+    except Exception:
+        return
+
+    if 'phone_number' not in user_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE users ADD COLUMN phone_number VARCHAR(20)'))
+
+    try:
+        notification_columns = {col['name'] for col in inspector.get_columns('notification')}
+    except Exception:
+        return
+
+    if 'actor_id' not in notification_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE notification ADD COLUMN actor_id INTEGER'))

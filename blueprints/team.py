@@ -82,21 +82,42 @@ def dashboard_overview():
             }
         )
 
-    pending_invites = (
-        TournamentTeam.query.join(Team, TournamentTeam.team_id == Team.team_id)
+    pending_invite_entries = (
+        TournamentTeam.query.options(
+            joinedload(TournamentTeam.tournament),
+            joinedload(TournamentTeam.team),
+        )
+        .join(Team, TournamentTeam.team_id == Team.team_id)
         .filter(
             Team.managed_by == g.current_user.id,
             TournamentTeam.status == 'pending',
             TournamentTeam.registration_method == 'smc_invited',
         )
-        .count()
+        .order_by(TournamentTeam.requested_at.asc())
+        .all()
+    )
+
+    pending_request_entries = (
+        TournamentTeam.query.options(
+            joinedload(TournamentTeam.tournament),
+            joinedload(TournamentTeam.team),
+        )
+        .join(Team, TournamentTeam.team_id == Team.team_id)
+        .filter(
+            Team.managed_by == g.current_user.id,
+            TournamentTeam.status == 'pending',
+            TournamentTeam.registration_method != 'smc_invited',
+        )
+        .order_by(TournamentTeam.requested_at.asc())
+        .all()
     )
 
     stats = {
         'total_teams': len(managed_teams),
         'total_players': total_players,
         'active_tournaments': total_active_tournaments,
-        'pending_invites': pending_invites,
+        'pending_invites': len(pending_invite_entries),
+        'pending_requests': len(pending_request_entries),
     }
 
     notifications_preview = Notification.active_for_user(g.current_user.id).limit(6).all()
@@ -108,6 +129,8 @@ def dashboard_overview():
         stats=stats,
         notifications_preview=notifications_preview,
         unread_notification_count=unread_notification_count,
+        pending_invites=pending_invite_entries,
+        pending_requests=pending_request_entries,
     )
 
 
@@ -120,6 +143,8 @@ def notifications():
 
     if status_filter == 'archived':
         query = query.filter(Notification.status == 'archived')
+    elif status_filter == 'resolved':
+        query = query.filter(Notification.status == 'resolved')
     elif status_filter == 'all':
         pass
     else:
@@ -154,8 +179,7 @@ def create_team():
         try:
             team_name = request.form.get('team_name', '').strip()
             department = request.form.get('department', '').strip()
-            manager_name = request.form.get('manager_name', '').strip()
-            manager_contact = request.form.get('manager_contact', '').strip()
+            institution = request.form.get('institution', '').strip()
 
             if not team_name:
                 flash('Team name is required.', 'error')
@@ -165,20 +189,19 @@ def create_team():
                 flash('Department is required.', 'error')
                 return redirect(url_for('team.create_team'))
 
-            if not manager_name:
-                flash('Manager name is required.', 'error')
-                return redirect(url_for('team.create_team'))
+            if not institution:
+                institution = g.current_user.institution
 
             team_id = generate_team_id()
             team = Team(
                 name=team_name,
                 department=department,
-                manager_name=manager_name,
-                manager_contact=manager_contact,
+                manager_name=g.current_user.username,
+                manager_contact=g.current_user.phone_number,
                 team_id=team_id,
                 created_by=g.current_user.id,
                 managed_by=g.current_user.id,
-                institution=g.current_user.institution,
+                institution=institution,
             )
 
             db.session.add(team)
@@ -419,6 +442,7 @@ def join_tournament():
 
     organizer = tournament.creator
     if organizer:
+        context_ref = f"{tournament.id}:{team.team_id}"
         organizer.notify(
             f'Team "{team.name}" requested to join {tournament.name}.',
             category='info',
@@ -426,7 +450,8 @@ def join_tournament():
             status='pending',
             link_target=url_for('smc.pending_teams', tournament_id=tournament.id),
             context_type='tournament',
-            context_ref=str(tournament.id),
+            context_ref=context_ref,
+            actor_id=getattr(g.current_user, 'id', None),
         )
 
     db.session.commit()
@@ -462,12 +487,13 @@ def respond_invitation(assoc_id):
     decision = request.form.get('decision')
     organizer = tournament.creator if tournament else None
 
-    manager_notes = Notification.query.filter_by(
-        user_id=g.current_user.id,
-        context_type='tournament',
-        context_ref=str(association.tournament_id),
-        kind='tournament_invite',
-        status='pending',
+    context_ref = f"{association.tournament_id}:{association.team_id}"
+    manager_notes = Notification.query.filter(
+        Notification.user_id == g.current_user.id,
+        Notification.context_type == 'tournament',
+        Notification.kind == 'tournament_invite',
+        Notification.status == 'pending',
+        Notification.context_ref.in_([context_ref, str(association.tournament_id)]),
     ).all()
 
     if decision == 'accept':
@@ -477,6 +503,7 @@ def respond_invitation(assoc_id):
         association.approved_by = organizer.id if organizer else None
 
         for note in manager_notes:
+            note.message = f'Invitation accepted: {team.name} will compete in {tournament.name}.'
             note.resolve()
 
         if organizer and tournament:
@@ -486,12 +513,16 @@ def respond_invitation(assoc_id):
                 kind='tournament_invite',
                 status='active',
                 link_target=url_for('smc.tournament_detail', tournament_id=tournament.id),
+                context_type='tournament',
+                context_ref=context_ref,
+                actor_id=getattr(g.current_user, 'id', None),
             )
 
         db.session.commit()
         flash('Invitation accepted. Your team is now part of the tournament.', 'success')
     elif decision == 'decline':
         for note in manager_notes:
+            note.message = f'Invitation declined: {team.name} will not participate in {tournament.name}.'
             note.resolve()
 
         db.session.delete(association)
@@ -501,8 +532,11 @@ def respond_invitation(assoc_id):
                 f'Team "{team.name}" declined the invitation to {tournament.name}.',
                 category='warning',
                 kind='tournament_invite',
-                status='resolved',
+                status='active',
                 link_target=url_for('smc.tournament_detail', tournament_id=tournament.id),
+                context_type='tournament',
+                context_ref=context_ref,
+                actor_id=getattr(g.current_user, 'id', None),
             )
 
         db.session.commit()
