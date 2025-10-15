@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications • Team Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('team.dashboard_overview') }}" class="text-sm hover:text-blue-400 transition">← Dashboard</a>
+        <span class="text-lg font-semibold">Notifications</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-300">My Teams</a>
+        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-300">Browse Tournaments</a>
+        <span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-4xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% macro status_badge(status) -%}
+    {%- if status == 'pending' -%}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">Pending</span>
+    {%- elif status == 'active' -%}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">Active</span>
+    {%- elif status == 'resolved' -%}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">Resolved</span>
+    {%- elif status == 'archived' -%}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold">Archived</span>
+    {%- else -%}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">{{ status|capitalize }}</span>
+    {%- endif -%}
+  {%- endmacro %}
+
+  <header class="max-w-6xl mx-auto w-full px-4 py-8 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900">Stay on top of updates</h1>
+      <p class="text-sm text-gray-600 mt-1">Invitations, approvals, and reminders appear here. Filter the feed to focus on what matters now.</p>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="{{ url_for('team.notifications', status='active') }}" class="px-4 py-2 rounded border {% if status_filter == 'active' %}border-blue-500 bg-blue-50 text-blue-700 font-medium{% else %}border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700{% endif %}">Active</a>
+      <a href="{{ url_for('team.notifications', status='resolved') }}" class="px-4 py-2 rounded border {% if status_filter == 'resolved' %}border-blue-500 bg-blue-50 text-blue-700 font-medium{% else %}border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700{% endif %}">Resolved</a>
+      <a href="{{ url_for('team.notifications', status='archived') }}" class="px-4 py-2 rounded border {% if status_filter == 'archived' %}border-blue-500 bg-blue-50 text-blue-700 font-medium{% else %}border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700{% endif %}">Archived</a>
+      <a href="{{ url_for('team.notifications', status='all') }}" class="px-4 py-2 rounded border {% if status_filter == 'all' %}border-blue-500 bg-blue-50 text-blue-700 font-medium{% else %}border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700{% endif %}">All</a>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12">
+    {% if notifications %}
+      <ul class="space-y-4">
+        {% for note in notifications %}
+          <li class="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p class="text-gray-900 font-medium">{{ note.message }}</p>
+                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-2">
+                  <span>{{ note.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                  <span class="uppercase tracking-wider">{{ note.category }}</span>
+                  {{ status_badge(note.status) }}
+                  {% if not note.is_read %}<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Unread</span>{% endif %}
+                </div>
+              </div>
+              <div class="flex flex-col gap-2 text-sm items-stretch">
+                {% if not note.is_read %}
+                <form method="POST" action="{{ url_for('team.mark_notification_read', notification_id=note.id, status=status_filter) }}">
+                  <button type="submit" class="px-4 py-2 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-700 transition">Mark Read</button>
+                </form>
+                {% endif %}
+
+                {% if note.status == 'pending' and note.link_target %}
+                  <a href="{{ note.link_target }}" class="px-4 py-2 text-center rounded bg-blue-600 text-white hover:bg-blue-700 transition">Resolve</a>
+                {% elif note.link_target %}
+                  <a href="{{ note.link_target }}" class="px-4 py-2 text-center rounded border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-700 transition">View</a>
+                {% endif %}
+
+                {% if note.status in ['pending', 'active'] %}
+                <form method="POST" action="{{ url_for('team.mark_notification_read', notification_id=note.id, status=status_filter) }}" onsubmit="return confirm('Remove this notification?');">
+                  <input type="hidden" name="resolve" value="1" />
+                  <button type="submit" class="px-4 py-2 rounded border border-red-200 text-red-600 hover:bg-red-50 transition">Remove</button>
+                </form>
+                {% elif note.status in ['resolved', 'archived'] %}
+                  <span class="px-4 py-2 rounded border border-gray-200 text-gray-500 text-center">Resolved</span>
+                {% endif %}
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="bg-white border border-dashed border-gray-300 rounded-lg p-12 text-center text-gray-500 text-sm">
+        No notifications in this view yet. Try another filter or check back soon.
+      </div>
+    {% endif %}
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
+
+</body>
+</html>

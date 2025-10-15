@@ -3,164 +3,170 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Browse Tournaments – TourneyTrackers</title>
+  <title>Browse Tournaments • Team Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex flex-col">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- 🔹 Navbar -->
-  <nav class="bg-black/60 backdrop-blur border-b border-gray-700">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between px-6 py-4">
-      <a href="{{ url_for('team.my_teams') }}" class="text-2xl font-bold tracking-wide text-white hover:text-blue-400 transition">
-        TourneyTrackers
-      </a>
-      <div class="flex items-center gap-4 text-sm flex-wrap justify-end">
-        <span class="text-gray-300">👤 {{ g.current_user.username }}</span>
-        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-400 transition">My Teams</a>
-        <a href="{{ url_for('team.browse_tournaments') }}" class="text-blue-400 font-semibold underline">Browse Tournaments</a>
-        <a href="{{ url_for('auth.logout') }}" class="hover:text-red-400 transition">Logout</a>
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('team.dashboard_overview') }}" class="text-sm hover:text-blue-400 transition">← Dashboard</a>
+        <span class="text-lg font-semibold">Browse Tournaments</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-300">My Teams</a>
+        <a href="{{ url_for('team.notifications', status='active') }}" class="hover:text-blue-300">Notifications</a>
+        <span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
       </div>
     </div>
   </nav>
 
-  <!-- 🔹 Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="max-w-5xl w-full mx-auto mt-6 space-y-3 px-4">
-        {% for category, message in messages %}
-          <div class="p-3 rounded-lg text-sm font-medium 
-            {% if category == 'error' %} bg-red-500/80 
-            {% elif category == 'success' %} bg-green-500/80 
-            {% else %} bg-blue-500/80 
-            {% endif %}">
-            {{ message }}
-          </div>
-        {% endfor %}
+      <div class="max-w-5xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
   {% endwith %}
 
-  <!-- 🔹 Page Header -->
-  <header class="max-w-6xl mx-auto flex items-center justify-between px-6 py-8 border-b border-gray-700">
-    <h1 class="text-3xl font-bold text-white">Browse Tournaments</h1>
+  <header class="max-w-6xl mx-auto w-full px-4 py-8">
+    <h1 class="text-3xl font-semibold text-gray-900">Find tournaments for your teams</h1>
+    <p class="text-sm text-gray-600 mt-2">Join open tournaments immediately, respond to invitations, or track pending approvals.</p>
   </header>
 
-  <!-- 🔹 Main Section -->
-  <main class="flex-grow max-w-6xl mx-auto px-6 py-10">
-
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12">
     {% if user_teams %}
       {% if tournament_data %}
         <div class="space-y-8">
-
-          {% for data in tournament_data %}
-          <div class="bg-gray-800/70 border border-gray-700 rounded-2xl shadow-md hover:shadow-blue-500/20 transition overflow-hidden">
-
-            <!-- Tournament Header -->
-            <div class="flex flex-wrap justify-between items-start px-6 py-5 border-b border-gray-700">
-              <div>
-                <h2 class="text-2xl font-semibold text-white">{{ data.tournament.name }}</h2>
-                <p class="text-gray-400 text-sm mt-1">
-                  {{ data.tournament.start_date }} → {{ data.tournament.end_date }}
-                </p>
-              </div>
-              <span class="px-3 py-1 rounded text-xs uppercase mt-2 sm:mt-0
-                {% if data.tournament.status == 'active' %} bg-green-500/20 text-green-400
-                {% elif data.tournament.status == 'upcoming' %} bg-yellow-500/20 text-yellow-400
-                {% elif data.tournament.status == 'completed' %} bg-gray-500/20 text-gray-300
-                {% else %} bg-blue-500/20 text-blue-300
-                {% endif %}">
-                {{ data.tournament.status }}
-              </span>
-            </div>
-
-            <!-- Rules -->
-            {% if data.tournament.rules %}
-              <div class="px-6 py-4 bg-gray-900/40 border-b border-gray-700 text-gray-300 text-sm rounded-b-lg">
-                <strong class="text-gray-200">Rules:</strong> {{ data.tournament.rules }}
-              </div>
-            {% endif %}
-
-            <!-- Teams Status -->
-            <div class="px-6 py-5 space-y-4 text-sm">
-              {% if data.joined_teams %}
+          {% for entry in tournament_data %}
+            {% set tournament = entry.tournament %}
+            <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+              <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h3 class="text-blue-400 font-semibold">Your Teams in this Tournament</h3>
-                  <ul class="mt-2 space-y-2">
-                    {% for team in data.joined_teams %}
-                      <li class="flex items-center justify-between bg-gray-900/50 border border-gray-700 px-4 py-2 rounded-lg">
-                        <div class="flex items-center gap-3">
-                          <span class="text-white">{{ team.name }}</span>
-                          <span class="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 font-semibold">Joined</span>
-                        </div>
-                        <a href="{{ url_for('team.dashboard', team_id=team.team_id) }}" class="text-blue-400 hover:underline text-sm">
-                          View Dashboard →
-                        </a>
-                      </li>
-                    {% endfor %}
-                  </ul>
+                  <h2 class="text-2xl font-semibold text-gray-900">{{ tournament.name }}</h2>
+                  <p class="text-sm text-gray-600 mt-1">{{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }} • Status: <span class="font-medium text-gray-800">{{ tournament.status|capitalize }}</span></p>
+                  <p class="text-xs text-gray-500 mt-1">{{ tournament.institution or 'Open to all institutions' }}</p>
+                </div>
+                <div class="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                  <p><span class="font-semibold">Active Teams:</span> {{ entry.joined_teams|length }}</p>
+                  <p><span class="font-semibold">Pending Requests:</span> {{ entry.pending_teams|length }}</p>
+                  <p><span class="font-semibold">Invitations:</span> {{ entry.invited_entries|length }}</p>
+                </div>
+              </div>
+
+              {% if tournament.rules %}
+                <div class="mt-4 text-sm text-gray-700">
+                  <h3 class="font-medium text-gray-800">Tournament Rules</h3>
+                  <p class="mt-1 whitespace-pre-line">{{ tournament.rules }}</p>
                 </div>
               {% endif %}
 
-              {% if data.pending_teams %}
-                <div>
-                  <h3 class="text-yellow-400 font-semibold">Pending Approval</h3>
-                  <ul class="mt-2 space-y-2">
-                    {% for team in data.pending_teams %}
-                      <li class="flex items-center justify-between bg-gray-900/50 border border-gray-700 px-4 py-2 rounded-lg">
-                        <span>{{ team.name }}</span>
-                        <span class="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-400 font-semibold">Pending</span>
-                      </li>
+              <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                <div class="space-y-4">
+                  <h3 class="text-lg font-semibold text-gray-900">Join with your team</h3>
+                  <div class="space-y-3">
+                    {% for team in user_teams %}
+                      {% if team.team_id not in entry.associated_team_ids %}
+                        <form method="POST" action="{{ url_for('team.join_tournament') }}" class="flex flex-wrap items-center gap-3 border border-dashed border-gray-300 rounded-md px-4 py-3 bg-gray-50">
+                          <div class="flex-1 min-w-[200px]">
+                            <p class="font-medium text-gray-800">{{ team.name }}</p>
+                            <p class="text-xs text-gray-500">Team ID: {{ team.team_id }}</p>
+                          </div>
+                          <input type="hidden" name="tournament_id" value="{{ tournament.id }}" />
+                          <input type="hidden" name="team_id" value="{{ team.team_id }}" />
+                          <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Request Join</button>
+                        </form>
+                      {% endif %}
                     {% endfor %}
-                  </ul>
+                  </div>
+                  {% if entry.associated_team_ids|length == user_teams|length %}
+                    <p class="text-sm text-gray-500">All of your teams are already associated with this tournament.</p>
+                  {% endif %}
                 </div>
-              {% endif %}
-            </div>
 
-            <!-- Join Form -->
-            <div class="px-6 py-5 border-t border-gray-700 bg-gray-900/50">
-              <form method="POST" action="{{ url_for('team.join_tournament') }}" class="flex flex-wrap items-center gap-3">
-                <input type="hidden" name="tournament_id" value="{{ data.tournament.id }}">
-                <select name="team_id"
-                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:ring-2 focus:ring-blue-500"
-                        required>
-                  <option value="">Select a team to join</option>
-                  {% for team in user_teams %}
-                    {% set already_in = team in data.joined_teams or team in data.pending_teams %}
-                    <option value="{{ team.team_id }}" {% if already_in %}disabled{% endif %}>
-                      {{ team.name }} {% if already_in %}(Already joined/pending){% endif %}
-                    </option>
-                  {% endfor %}
-                </select>
-                <button type="submit"
-                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-lg hover:shadow-blue-500/30 transition">
-                  Request to Join
-                </button>
-              </form>
-            </div>
-          </div>
+                <div class="space-y-4">
+                  {% if entry.invited_entries %}
+                    <div class="border border-blue-200 bg-blue-50 rounded-md p-4">
+                      <h3 class="text-lg font-semibold text-blue-800">Invitations awaiting action</h3>
+                      <ul class="mt-3 space-y-3 text-sm">
+                        {% for invite in entry.invited_entries %}
+                          <li class="bg-white border border-blue-200 rounded-md px-4 py-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p class="text-gray-900 font-medium">{{ invite.team.name }}</p>
+                                <p class="text-xs text-gray-500">Team ID: {{ invite.team.team_id }}</p>
+                              </div>
+                              <div class="flex items-center gap-2">
+                                <form method="POST" action="{{ url_for('team.respond_invitation', assoc_id=invite.assoc_id) }}">
+                                  <input type="hidden" name="decision" value="accept" />
+                                  <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition">Accept</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('team.respond_invitation', assoc_id=invite.assoc_id) }}">
+                                  <input type="hidden" name="decision" value="decline" />
+                                  <button type="submit" class="px-4 py-2 rounded border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 transition">Decline</button>
+                                </form>
+                              </div>
+                            </div>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+
+                  {% if entry.pending_teams %}
+                    <div class="border border-amber-200 bg-amber-50 rounded-md p-4">
+                      <h3 class="text-lg font-semibold text-amber-800">Pending approvals</h3>
+                      <ul class="mt-3 space-y-2 text-sm text-amber-900">
+                        {% for team in entry.pending_teams %}
+                          <li>{{ team.name }} – awaiting SMC decision</li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+
+                  {% if entry.joined_teams %}
+                    <div class="border border-gray-200 rounded-md p-4 bg-gray-50">
+                      <h3 class="text-lg font-semibold text-gray-800">Teams already participating</h3>
+                      <ul class="mt-3 space-y-2 text-sm text-gray-600">
+                        {% for team in entry.joined_teams %}
+                          <li>{{ team.name }} ({{ team.team_id }})</li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </section>
           {% endfor %}
         </div>
-
       {% else %}
-        <div class="text-center py-20 text-gray-400">
-          <p class="text-lg">No tournaments available yet.</p>
+        <div class="bg-white border border-gray-200 rounded-lg p-10 text-center text-sm text-gray-500">
+          No tournaments are available right now. Check back soon or ask an SMC to create a new event.
         </div>
       {% endif %}
     {% else %}
-      <div class="text-center py-20">
-        <h3 class="text-xl font-semibold text-gray-300 mb-3">You need to create a team first.</h3>
-        <p class="text-gray-400 mb-6">Only team managers can join tournaments.</p>
-        <a href="{{ url_for('team.create_team') }}"
-           class="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-blue-500/30 transition">
-          + Create Team
-        </a>
+      <div class="bg-white border border-dashed border-gray-300 rounded-lg p-12 text-center">
+        <h2 class="text-xl font-semibold text-gray-900">Create a team to get started</h2>
+        <p class="text-sm text-gray-600 mt-2">You need at least one team to join tournaments.</p>
+        <a href="{{ url_for('team.create_team') }}" class="inline-flex items-center justify-center px-5 py-2 mt-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Create Team</a>
       </div>
     {% endif %}
   </main>
 
-  <!-- 🔹 Footer -->
-  <footer class="text-center py-6 text-sm text-gray-500 border-t border-gray-800 mt-10">
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
     © 2025 TourneyTrackers. All rights reserved.
   </footer>
 

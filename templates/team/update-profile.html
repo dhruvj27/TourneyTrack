@@ -1,211 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Update Profile – {{ team.name }} | TourneyTrackers</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Update Team • {{ team.name }}</title>
+	<script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex flex-col">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <!-- Navbar -->
-  <nav class="bg-black/60 backdrop-blur border-b border-gray-700">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between px-6 py-4">
-      <a href="{{ url_for('team.my_teams') }}" class="text-2xl font-bold tracking-wide text-white hover:text-blue-400 transition">
-        TourneyTrackers
-      </a>
-      <div class="flex items-center gap-4 text-sm flex-wrap justify-end">
-        <span class="text-gray-300">👤 {{ g.current_user.username }} | 🏆 {{ team.name }}</span>
-        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-400 transition">My Teams</a>
-        <a href="{{ url_for('team.dashboard', team_id=team.team_id) }}" class="hover:text-blue-400 transition">Dashboard</a>
-        <a href="{{ url_for('auth.logout') }}" class="hover:text-red-400 transition">Logout</a>
-      </div>
-    </div>
-  </nav>
+	<nav class="bg-gray-900 text-white shadow">
+		<div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+			<div class="flex items-center gap-6">
+				<a href="{{ url_for('team.team_detail', team_id=team.team_id) }}" class="text-sm hover:text-blue-400 transition">← Back to Team</a>
+				<span class="text-lg font-semibold">Update Team Profile</span>
+			</div>
+			<div class="flex items-center gap-4 text-sm">
+				<a href="{{ url_for('team.dashboard_overview') }}" class="hover:text-blue-300">Overview</a>
+				<a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-300">My Teams</a>
+				<a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-300">Browse Tournaments</a>
+				<a href="{{ url_for('team.notifications', status='active') }}" class="hover:text-blue-300">Notifications</a>
+				<span class="hidden sm:inline text-gray-300">Manager: {{ team.manager_name }}</span>
+				<a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
+			</div>
+		</div>
+	</nav>
 
-  <!-- Flash messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="max-w-5xl w-full mx-auto mt-6 space-y-3 px-4">
-        {% for category, message in messages %}
-          <div class="p-3 rounded-lg text-sm font-medium 
-            {% if category == 'error' %} bg-red-500/80 
-            {% elif category == 'success' %} bg-green-500/80 
-            {% else %} bg-blue-500/80 
-            {% endif %}">
-            {{ message }}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+	{% with messages = get_flashed_messages(with_categories=true) %}
+		{% if messages %}
+			<div class="max-w-5xl mx-auto w-full px-4 mt-6">
+				<div class="space-y-2">
+					{% for category, message in messages %}
+						<div class="px-4 py-3 rounded border text-sm
+							{% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+							{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+							{% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+							{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+							{{ message }}
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		{% endif %}
+	{% endwith %}
 
-  <!-- Header -->
-  <header class="max-w-6xl mx-auto px-6 py-8 border-b border-gray-700 flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-bold text-white">Update Profile</h1>
-      <p class="text-gray-400 text-sm mt-1">Team: {{ team.name }} | ID: {{ team.team_id }}</p>
-    </div>
-  </header>
+	<header class="max-w-6xl mx-auto w-full px-4 py-8 border-b border-gray-200">
+		<h1 class="text-3xl font-semibold text-gray-900">{{ team.name }}</h1>
+		<p class="text-sm text-gray-600 mt-1">Team ID: {{ team.team_id }} • Department: {{ team.department }}</p>
+		<p class="text-sm text-gray-600">Manager: {{ team.manager_name }}{% if team.manager_contact %} • {{ team.manager_contact }}{% endif %}</p>
+	</header>
 
-  <main class="max-w-6xl mx-auto px-6 py-10 space-y-12">
+	<main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12 space-y-10">
 
-    <!-- Update Team Details -->
-    <section class="bg-gray-800/70 border border-gray-700 rounded-2xl p-6 shadow-md">
-      <h2 class="text-2xl font-semibold text-blue-400 mb-4">Team Details</h2>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900">Team Details</h2>
+			<p class="text-sm text-gray-500 mt-1">Update contact and department information for this roster.</p>
+			<form method="POST" action="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="mt-4 grid gap-4 sm:grid-cols-2">
+				<input type="hidden" name="action" value="update_team" />
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="manager_name">Manager Name</label>
+					<input id="manager_name" name="manager_name" value="{{ team.manager_name }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="manager_contact">Manager Contact</label>
+					<input id="manager_contact" name="manager_contact" value="{{ team.manager_contact or '' }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="department">Department</label>
+					<input id="department" name="department" value="{{ team.department }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="institution">Institution</label>
+					<input id="institution" name="institution" value="{{ team.institution or '' }}" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div class="sm:col-span-2 flex justify-end">
+					<button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Save team details</button>
+				</div>
+			</form>
+		</section>
 
-      <form method="POST" class="space-y-4">
-        <input type="hidden" name="action" value="update_team">
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<h2 class="text-xl font-semibold text-gray-900">Active Players</h2>
+				<p class="text-sm text-gray-500">Edit player information inline, then save updates below.</p>
+			</div>
+			{% if players %}
+				<form method="POST" action="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="mt-4 space-y-4">
+					<input type="hidden" name="action" value="update_players" />
+					{% for player in players %}
+						<div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+							<div class="flex items-center justify-between gap-3">
+								<h3 class="text-sm font-semibold text-gray-800">{{ player.name }} (Roll {{ player.roll_number }})</h3>
+								<button type="submit" form="remove-player-{{ player.id }}" class="text-xs text-red-600 hover:text-red-700">Remove</button>
+							</div>
+							<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3 text-sm mt-3">
+								<div>
+									<label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+									<input name="player_{{ player.id }}_name" value="{{ player.name }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+								</div>
+								<div>
+									<label class="block text-xs font-medium text-gray-600 mb-1">Roll Number</label>
+									<input name="player_{{ player.id }}_roll_number" value="{{ player.roll_number }}" class="w-full border border-gray-300 rounded px-3 py-2" />
+								</div>
+								<div>
+									<label class="block text-xs font-medium text-gray-600 mb-1">Department</label>
+									<input name="player_{{ player.id }}_department" value="{{ player.department or '' }}" class="w-full border border-gray-300 rounded px-3 py-2" />
+								</div>
+								<div>
+									<label class="block text-xs font-medium text-gray-600 mb-1">Academic Year</label>
+									<input name="player_{{ player.id }}_year" value="{{ player.year or '' }}" class="w-full border border-gray-300 rounded px-3 py-2" />
+								</div>
+								<div>
+									<label class="block text-xs font-medium text-gray-600 mb-1">Contact</label>
+									<input name="player_{{ player.id }}_contact" value="{{ player.contact or '' }}" class="w-full border border-gray-300 rounded px-3 py-2" />
+								</div>
+							</div>
+						</div>
+					{% endfor %}
+					<div class="flex justify-end">
+						<button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Save player updates</button>
+					</div>
+				</form>
+				{% for player in players %}
+					<!-- Dedicated form lets the remove button submit without clearing inline edits -->
+					<form id="remove-player-{{ player.id }}" method="POST" action="{{ url_for('team.update_profile', team_id=team.team_id) }}">
+						<input type="hidden" name="action" value="remove_player" />
+						<input type="hidden" name="player_id" value="{{ player.id }}" />
+					</form>
+				{% endfor %}
+			{% else %}
+				<p class="text-sm text-gray-500 mt-4">No active players yet. Use the form below to add team members.</p>
+			{% endif %}
+		</section>
 
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm font-medium mb-1">Team Name</label>
-            <input type="text" value="{{ team.name }}" disabled
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-gray-400 cursor-not-allowed">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Department</label>
-            <input type="text" value="{{ team.department }}" disabled
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-gray-400 cursor-not-allowed">
-          </div>
-        </div>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900">Add New Player</h2>
+			<p class="text-sm text-gray-500 mt-1">Roll numbers must remain unique across the platform.</p>
+			<form method="POST" action="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="mt-4 grid gap-4 sm:grid-cols-2">
+				<input type="hidden" name="action" value="add_player" />
+				<div class="sm:col-span-2">
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="new_player_name">Player Name<span class="text-red-500">*</span></label>
+					<input id="new_player_name" name="new_player_name" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="new_player_roll">Roll Number<span class="text-red-500">*</span></label>
+					<input id="new_player_roll" name="new_player_roll" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="new_player_department">Department</label>
+					<input id="new_player_department" name="new_player_department" value="{{ team.department }}" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+				</div>
+				<div>
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="new_player_year">Academic Year</label>
+					<input id="new_player_year" name="new_player_year" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+				</div>
+				<div class="sm:col-span-2">
+					<label class="block text-sm font-medium text-gray-700 mb-1" for="new_player_contact">Contact</label>
+					<input id="new_player_contact" name="new_player_contact" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+				</div>
+				<div class="sm:col-span-2 flex justify-end">
+					<button type="submit" class="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition">Add player</button>
+				</div>
+			</form>
+		</section>
 
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label for="manager_name" class="block text-sm font-medium mb-1">Manager Name</label>
-            <input type="text" id="manager_name" name="manager_name" value="{{ team.manager_name }}"
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-          </div>
-          <div>
-            <label for="manager_contact" class="block text-sm font-medium mb-1">Manager Contact</label>
-            <input type="text" id="manager_contact" name="manager_contact" value="{{ team.manager_contact or '' }}"
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none">
-          </div>
-        </div>
+	</main>
 
-        <button type="submit"
-          class="mt-4 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-md hover:shadow-blue-500/30 transition">
-          Update Team Details
-        </button>
-      </form>
-    </section>
-
-    <!-- Player Management -->
-    <section class="bg-gray-800/70 border border-gray-700 rounded-2xl p-6 shadow-md">
-      <h2 class="text-2xl font-semibold text-blue-400 mb-4">Squad Management</h2>
-
-      {% if players %}
-      <form method="POST">
-        <input type="hidden" name="action" value="update_players">
-
-        <div class="space-y-6">
-          {% for player in players %}
-          <div class="border border-gray-700 rounded-xl p-4 bg-gray-900/70">
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="font-semibold text-white text-lg">{{ player.name }}</h3>
-              <button formaction="{{ url_for('team.update_profile', team_id=team.team_id) }}" 
-                      formmethod="POST" 
-                      name="action" value="remove_player" 
-                      onclick="return confirm('Remove this player from the squad?');"
-                      class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition">
-                Remove
-              </button>
-              <input type="hidden" name="player_id" value="{{ player.id }}">
-            </div>
-
-            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm mb-1">Name</label>
-                <input type="text" name="player_{{ player.id }}_name" value="{{ player.name }}"
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-              </div>
-              <div>
-                <label class="block text-sm mb-1">Roll Number</label>
-                <input type="text" name="player_{{ player.id }}_roll_number" value="{{ player.roll_number }}"
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-              </div>
-              <div>
-                <label class="block text-sm mb-1">Department</label>
-                <input type="text" name="player_{{ player.id }}_department" value="{{ player.department or '' }}"
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-              </div>
-              <div>
-                <label class="block text-sm mb-1">Year</label>
-                <input type="text" name="player_{{ player.id }}_year" value="{{ player.year or '' }}"
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-              </div>
-              <div>
-                <label class="block text-sm mb-1">Contact</label>
-                <input type="text" name="player_{{ player.id }}_contact" value="{{ player.contact or '' }}"
-                  class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-
-        <button type="submit"
-          class="mt-6 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-md hover:shadow-blue-500/30 transition">
-          Update All Players
-        </button>
-      </form>
-      {% else %}
-        <p class="text-gray-400 italic">No players in squad yet.</p>
-      {% endif %}
-    </section>
-
-    <!-- Add New Player -->
-    <section class="bg-gray-800/70 border border-gray-700 rounded-2xl p-6 shadow-md">
-      <h2 class="text-2xl font-semibold text-blue-400 mb-4">Add New Player</h2>
-      <form method="POST" class="space-y-4">
-        <input type="hidden" name="action" value="add_player">
-
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label for="new_player_name" class="block text-sm mb-1">Player Name *</label>
-            <input type="text" id="new_player_name" name="new_player_name" required
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-          </div>
-          <div>
-            <label for="new_player_roll" class="block text-sm mb-1">Roll Number *</label>
-            <input type="number" id="new_player_roll" name="new_player_roll" required
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-          </div>
-        </div>
-
-        <div class="grid sm:grid-cols-2 gap-6">
-          <div>
-            <label for="new_player_department" class="block text-sm mb-1">Department</label>
-            <input type="text" id="new_player_department" name="new_player_department" value="{{ team.department }}"
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-          </div>
-          <div>
-            <label for="new_player_year" class="block text-sm mb-1">Year</label>
-            <input type="text" id="new_player_year" name="new_player_year"
-              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-          </div>
-        </div>
-
-        <div>
-          <label for="new_player_contact" class="block text-sm mb-1">Contact</label>
-          <input type="text" id="new_player_contact" name="new_player_contact"
-            class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white">
-        </div>
-
-        <button type="submit"
-          class="mt-4 px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold shadow-md hover:shadow-green-500/30 transition">
-          Add Player
-        </button>
-      </form>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer class="text-center py-6 text-sm text-gray-500 border-t border-gray-800 mt-10">
-    © 2025 TourneyTrackers. All rights reserved.
-  </footer>
+	<footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+		© 2025 TourneyTrackers. All rights reserved.
+	</footer>
 
 </body>
 </html>

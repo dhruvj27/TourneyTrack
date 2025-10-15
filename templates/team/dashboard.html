@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Team Manager Dashboard • TourneyTrackers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+  <nav class="bg-gray-900 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('index') }}" class="text-sm hover:text-blue-400 transition">← Home</a>
+        <span class="text-lg font-semibold tracking-wide">Team Manager Dashboard</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('team.dashboard_overview') }}" class="hover:text-blue-300">Dashboard</a>
+        <a href="{{ url_for('team.my_teams') }}" class="hover:text-blue-300">My Teams</a>
+        <a href="{{ url_for('team.browse_tournaments') }}" class="hover:text-blue-300">Browse Tournaments</a>
+        <a href="{{ url_for('team.notifications', status='active') }}" class="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-white/10 transition" aria-label="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 01-3.46 0"></path>
+          </svg>
+          {% if unread_notification_count %}
+            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-xs font-semibold bg-blue-500 text-white rounded-full">{{ unread_notification_count }}</span>
+          {% endif %}
+        </a>
+        <span class="hidden sm:inline text-gray-300">👤 {{ g.current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1 rounded bg-white/10 hover:bg-white/20 transition">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-4xl mx-auto w-full px-4 mt-6">
+        <div class="space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <header class="max-w-6xl mx-auto w-full px-4 py-8">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-semibold text-gray-900">Welcome back, {{ g.current_user.username }}!</h1>
+        <p class="text-sm text-gray-600 mt-1">Track the teams you manage, respond to invitations, and keep every roster ready for match day.</p>
+      </div>
+      <a href="{{ url_for('team.create_team') }}" class="inline-flex items-center justify-center px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow hover:bg-blue-700 transition">+ Create Team</a>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12 space-y-10">
+
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-sm text-gray-500">Teams Managed</p>
+        <p class="text-3xl font-semibold text-gray-900 mt-1">{{ stats.total_teams }}</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-sm text-gray-500">Active Players</p>
+        <p class="text-3xl font-semibold text-gray-900 mt-1">{{ stats.total_players }}</p>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-sm text-gray-500">Active Tournaments</p>
+        <p class="text-3xl font-semibold text-gray-900 mt-1">{{ stats.active_tournaments }}</p>
+      </div>
+      <div class="bg-white border border-blue-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-sm text-blue-700 font-medium">Pending Invitations</p>
+        <p class="text-3xl font-semibold text-blue-700 mt-1">{{ stats.pending_invites }}</p>
+      </div>
+      <div class="bg-white border border-amber-200 rounded-lg shadow-sm p-5 text-center">
+        <p class="text-sm text-amber-700 font-medium">Awaiting Approval</p>
+        <p class="text-3xl font-semibold text-amber-700 mt-1">{{ stats.pending_requests }}</p>
+      </div>
+    </section>
+
+    {% if pending_invites or pending_requests %}
+    <section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-6">
+      <header class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold text-gray-900">Pending Actions</h2>
+        <span class="text-sm text-gray-500">Respond to invitations and monitor approvals from SMCs.</span>
+      </header>
+
+      {% if pending_invites %}
+      <div class="border border-blue-200 bg-blue-50 rounded-md p-4">
+        <h3 class="text-lg font-semibold text-blue-800">Invitations from SMCs</h3>
+        <ul class="mt-3 space-y-3 text-sm">
+          {% for assoc in pending_invites %}
+            <li class="bg-white border border-blue-200 rounded-md px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="font-medium text-gray-900">{{ assoc.tournament.name }}</p>
+                <p class="text-xs text-gray-500">Team: {{ assoc.team.name }} • Invited {{ assoc.requested_at.strftime('%b %d, %Y') }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <form method="POST" action="{{ url_for('team.respond_invitation', assoc_id=assoc.id) }}">
+                  <input type="hidden" name="decision" value="accept" />
+                  <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition">Accept</button>
+                </form>
+                <form method="POST" action="{{ url_for('team.respond_invitation', assoc_id=assoc.id) }}">
+                  <input type="hidden" name="decision" value="decline" />
+                  <button type="submit" class="px-4 py-2 rounded border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 transition">Decline</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if pending_requests %}
+      <div class="border border-amber-200 bg-amber-50 rounded-md p-4">
+        <h3 class="text-lg font-semibold text-amber-800">Join requests waiting on approval</h3>
+        <ul class="mt-3 space-y-2 text-sm text-amber-900">
+          {% for assoc in pending_requests %}
+            <li>{{ assoc.team.name }} → {{ assoc.tournament.name }} • Submitted {{ assoc.requested_at.strftime('%b %d, %Y') }} • Awaiting SMC review</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="grid lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-gray-900">Teams You Manage</h2>
+          <a href="{{ url_for('team.my_teams') }}" class="text-sm text-blue-700 hover:underline">View all</a>
+        </div>
+
+        {% if teams %}
+          <div class="space-y-4">
+            {% for entry in teams %}
+              {% set team = entry.team %}
+              <article class="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ team.name }}</h3>
+                    <p class="text-sm text-gray-500">Team ID: {{ team.team_id }} • Department: {{ team.department }}</p>
+                    <p class="text-sm text-gray-500 mt-1">Manager: {{ team.manager_name }}{% if team.manager_contact %} • {{ team.manager_contact }}{% endif %}</p>
+                  </div>
+                  <div class="flex flex-wrap gap-3 text-sm text-gray-600">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100">{{ entry.player_count }} players</span>
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100">{{ entry.tournament_count }} tournaments</span>
+                    {% if entry.upcoming_matches %}
+                      {% set next_match = entry.upcoming_matches[0] %}
+                      <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-700">Next match: {{ next_match.date.strftime('%b %d') }} at {{ next_match.time.strftime('%H:%M') if next_match.time else 'TBD' }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                {% if entry.upcoming_matches %}
+                  <div class="mt-4 text-sm text-gray-600">
+                    <p class="font-medium text-gray-700">Upcoming Matches</p>
+                    <ul class="mt-2 space-y-1">
+                      {% for match in entry.upcoming_matches %}
+                        <li>{{ match.versus_display }} • {{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') if match.time else 'TBD' }} • {{ match.venue }}</li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if entry.recent_result %}
+                  <div class="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-600">
+                    <span class="font-medium text-gray-700">Latest Result:</span>
+                    {{ entry.recent_result.versus_display }} – Final {{ entry.recent_result.team1_score }} : {{ entry.recent_result.team2_score }}
+                  </div>
+                {% endif %}
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                  <a href="{{ url_for('team.team_detail', team_id=team.team_id) }}" class="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Open Team Dashboard</a>
+                  <a href="{{ url_for('team.update_profile', team_id=team.team_id) }}" class="px-4 py-2 rounded border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-50 transition">Manage Roster</a>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="bg-white border border-dashed border-gray-300 rounded-lg p-8 text-center text-sm text-gray-500">
+            You do not manage any teams yet. Create your first team to get started.
+          </div>
+        {% endif %}
+      </div>
+
+      <aside class="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">Notifications</h2>
+          <a href="{{ url_for('team.notifications', status='active') }}" class="text-sm text-blue-700 hover:underline">View all</a>
+        </div>
+
+        {% if notifications_preview %}
+          <ul class="space-y-3 text-sm">
+            {% for note in notifications_preview %}
+              <li class="border border-gray-200 rounded-md px-3 py-2">
+                <p class="font-medium text-gray-800">{{ note.message }}</p>
+                <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                  <span>{{ note.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                  <span class="uppercase tracking-wider">{{ note.status }}</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-500">No notifications right now. Check back later.</p>
+        {% endif %}
+      </aside>
+    </section>
+
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+    © 2025 TourneyTrackers. All rights reserved.
+  </footer>
+
+</body>
+</html>

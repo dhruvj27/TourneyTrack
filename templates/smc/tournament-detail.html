@@ -1,238 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{{ tournament.name }} • Tournament Details</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>{{ tournament.name }} • Tournament Detail</title>
+	<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 text-gray-900">
-  <!-- Navbar -->
-  <nav class="bg-gray-800 text-white px-6 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <a href="{{ url_for('smc.dashboard') }}" class="text-sm hover:underline">← Back to Dashboard</a>
-      <h1 class="text-lg font-semibold">{{ tournament.name }}</h1>
-    </div>
-    <a href="{{ url_for('auth.logout') }}" 
-       class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">
-      Logout
-    </a>
-  </nav>
 
-  <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-6 py-8 space-y-8">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="space-y-2">
-          {% for category, message in messages %}
-            <div class="px-4 py-3 rounded-lg border 
-              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
-              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
-              {% elif category == 'info' %}bg-blue-50 border-blue-200 text-blue-800
-              {% else %}bg-yellow-50 border-yellow-200 text-yellow-800{% endif %}">
-              {{ message }}
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+	<nav class="bg-gray-900 text-white shadow">
+		<div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<a href="{{ url_for('smc.dashboard') }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 text-sm font-medium hover:bg-white/20 transition" aria-label="Back to dashboard">
+					<span aria-hidden="true">←</span>
+					<span>SMC Dashboard</span>
+				</a>
+				<span class="text-lg font-semibold">{{ tournament.name }}</span>
+			</div>
+			<div class="flex items-center gap-4 text-sm">
+				<a href="{{ url_for('smc.notifications', status='active') }}" class="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-white/10 transition" aria-label="Notifications">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+						<path d="M13.73 21a2 2 0 01-3.46 0"></path>
+					</svg>
+					{% if unread_notification_count %}
+						<span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-xs font-semibold bg-blue-500 text-white rounded-full">{{ unread_notification_count }}</span>
+					{% endif %}
+				</a>
+				<a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">Logout</a>
+			</div>
+		</div>
+	</nav>
 
-    <!-- Tournament Summary -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">🏆 Tournament Overview</h2>
+	{% with messages = get_flashed_messages(with_categories=true) %}
+		{% if messages %}
+			<div class="max-w-6xl mx-auto w-full px-4 mt-6">
+				<div class="space-y-2">
+					{% for category, message in messages %}
+						<div class="px-4 py-3 rounded border text-sm
+							{% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+							{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+							{% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+							{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+							{{ message }}
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		{% endif %}
+	{% endwith %}
 
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <p class="text-sm text-gray-500">Tournament Name</p>
-          <p class="font-medium text-gray-800">{{ tournament.name }}</p>
-        </div>
-        <div>
-          <p class="text-sm text-gray-500">Duration</p>
-          <p class="font-medium text-gray-800">
-            {{ tournament.start_date.strftime('%b %d, %Y') }} → {{ tournament.end_date.strftime('%b %d, %Y') }}
-          </p>
-        </div>
-        <div>
-          <p class="text-sm text-gray-500">Status</p>
-          <p class="font-medium 
-             {% if tournament.status == 'active' %}text-green-600{% elif tournament.status == 'upcoming' %}text-blue-600{% else %}text-gray-600{% endif %}">
-             {{ tournament.status|capitalize }}
-          </p>
-        </div>
-        <div>
-          <p class="text-sm text-gray-500">Created On</p>
-          <p class="font-medium text-gray-800">{{ tournament.created_at.strftime('%b %d, %Y') }}</p>
-        </div>
-      </div>
+	<header class="max-w-6xl mx-auto w-full px-4 py-8 border-b border-gray-200">
+		<div class="flex flex-wrap items-start justify-between gap-6">
+			<div class="space-y-2">
+				<h1 class="text-3xl font-semibold text-gray-900">{{ tournament.name }}</h1>
+				<p class="text-sm text-gray-600">{{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }} • Status: {{ tournament.status|capitalize }}</p>
+				<p class="text-sm text-gray-600">Institution: {{ tournament.institution or 'Open to all' }}{% if tournament.location %} • Location: {{ tournament.location }}{% endif %}</p>
+				<p class="text-xs text-gray-500">Created {{ tournament.created_at.strftime('%b %d, %Y') }} • Managed by {{ g.current_user.username }}</p>
+			</div>
+			<a href="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Manage Schedule</a>
+		</div>
+		{% if tournament.rules %}
+			<div class="mt-4 border border-gray-200 rounded-lg bg-gray-50 p-4 text-sm text-gray-700 whitespace-pre-line">
+				{{ tournament.rules }}
+			</div>
+		{% endif %}
+	</header>
 
-      {% if tournament.rules %}
-        <div class="mt-4">
-          <p class="text-sm text-gray-500 mb-1">Rules</p>
-          <p class="text-gray-700 whitespace-pre-line">{{ tournament.rules }}</p>
-        </div>
-      {% endif %}
-    </section>
+	<main class="flex-grow max-w-6xl mx-auto w-full px-4 pb-12 space-y-10">
 
-    <!-- Stats Summary -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">📊 Statistics</h2>
+		<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+			<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+				<p class="text-xs uppercase text-gray-500 tracking-wide">Total Teams</p>
+				<p class="mt-2 text-2xl font-semibold text-gray-900">{{ stats.total_teams }}</p>
+			</div>
+			<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+				<p class="text-xs uppercase text-gray-500 tracking-wide">Active Teams</p>
+				<p class="mt-2 text-2xl font-semibold text-gray-900">{{ stats.active_teams }}</p>
+			</div>
+			<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+				<p class="text-xs uppercase text-gray-500 tracking-wide">Matches</p>
+				<p class="mt-2 text-2xl font-semibold text-gray-900">{{ stats.total_matches }}</p>
+			</div>
+			<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+				<p class="text-xs uppercase text-gray-500 tracking-wide">Upcoming</p>
+				<p class="mt-2 text-2xl font-semibold text-blue-700">{{ stats.upcoming_matches }}</p>
+			</div>
+			<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-5 text-center">
+				<p class="text-xs uppercase text-gray-500 tracking-wide">Completed</p>
+				<p class="mt-2 text-2xl font-semibold text-green-700">{{ stats.completed_matches }}</p>
+			</div>
+		</section>
 
-      <div class="grid sm:grid-cols-5 gap-4 text-center">
-        <div class="p-3 rounded-lg bg-blue-50 border border-blue-200">
-          <p class="text-sm text-blue-700">Teams</p>
-          <p class="text-2xl font-semibold text-blue-800">{{ stats.total_teams }}</p>
-        </div>
-        <div class="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-          <p class="text-sm text-emerald-700">Active Teams</p>
-          <p class="text-2xl font-semibold text-emerald-800">{{ stats.active_teams }}</p>
-        </div>
-        <div class="p-3 rounded-lg bg-indigo-50 border border-indigo-200">
-          <p class="text-sm text-indigo-700">Total Matches</p>
-          <p class="text-2xl font-semibold text-indigo-800">{{ stats.total_matches }}</p>
-        </div>
-        <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-          <p class="text-sm text-yellow-700">Upcoming</p>
-          <p class="text-2xl font-semibold text-yellow-800">{{ stats.upcoming_matches }}</p>
-        </div>
-        <div class="p-3 rounded-lg bg-gray-50 border border-gray-200">
-          <p class="text-sm text-gray-700">Completed</p>
-          <p class="text-2xl font-semibold text-gray-800">{{ stats.completed_matches }}</p>
-        </div>
-      </div>
-    </section>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Management Actions</h2>
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+				<a href="{{ url_for('smc.register_team', tournament_id=tournament.id) }}" class="border border-gray-200 hover:bg-gray-100 transition rounded-lg px-4 py-4">
+					<h3 class="text-lg font-semibold text-gray-900">Register or Invite Teams</h3>
+					<p class="text-sm text-gray-600 mt-1">Onboard new teams directly or send invitations to managers.</p>
+				</a>
+				<a href="{{ url_for('smc.pending_teams', tournament_id=tournament.id) }}" class="border border-gray-200 hover:bg-gray-100 transition rounded-lg px-4 py-4">
+					<h3 class="text-lg font-semibold text-gray-900">Review Join Requests</h3>
+					<p class="text-sm text-gray-600 mt-1">Approve or decline teams waiting for your decision.</p>
+				</a>
+				<a href="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}" class="border border-gray-200 hover:bg-gray-100 transition rounded-lg px-4 py-4">
+					<h3 class="text-lg font-semibold text-gray-900">Schedule Matches</h3>
+					<p class="text-sm text-gray-600 mt-1">Plan fixtures and avoid timing conflicts.</p>
+				</a>
+				<a href="{{ url_for('smc.add_results', tournament_id=tournament.id) }}" class="border border-gray-200 hover:bg-gray-100 transition rounded-lg px-4 py-4">
+					<h3 class="text-lg font-semibold text-gray-900">Record Match Results</h3>
+					<p class="text-sm text-gray-600 mt-1">Lock in scores to keep standings current.</p>
+				</a>
+				<a href="#teams-list" class="border border-gray-200 hover:bg-gray-100 transition rounded-lg px-4 py-4 {% if not tournament_teams %}pointer-events-none opacity-60{% endif %}">
+					<h3 class="text-lg font-semibold text-gray-900">Browse Teams</h3>
+					<p class="text-sm text-gray-600 mt-1">Scroll to the team roster section below.</p>
+				</a>
+			</div>
+		</section>
 
-    <!-- Management Actions -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">⚙️ Manage Tournament</h2>
-      <div class="grid sm:grid-cols-3 gap-4">
-        <a href="{{ url_for('smc.register_team', tournament_id=tournament.id) }}"
-           class="block text-center py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium transition">
-          📋 Register Team
-        </a>
-        <a href="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}"
-           class="block text-center py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium transition">
-          📅 Schedule Matches
-        </a>
-        <a href="{{ url_for('smc.add_results', tournament_id=tournament.id) }}"
-           class="block text-center py-3 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition">
-          🧾 Add Results
-        </a>
-      </div>
-    </section>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Pending Join Requests</h2>
+			{% if pending_requests %}
+				<div class="overflow-x-auto">
+					<table class="min-w-full text-sm text-left">
+						<thead class="bg-gray-100 border-b">
+							<tr>
+								<th class="px-4 py-2 font-medium text-gray-700">Team</th>
+								<th class="px-4 py-2 font-medium text-gray-700">Requested</th>
+								<th class="px-4 py-2 font-medium text-gray-700">Contact</th>
+								<th class="px-4 py-2 font-medium text-gray-700 text-right">Review</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y">
+							{% for assoc in pending_requests %}
+								<tr class="hover:bg-gray-50">
+									<td class="px-4 py-2">
+										<p class="font-medium text-gray-900">{{ assoc.team.name }}</p>
+										<p class="text-xs text-gray-500">ID {{ assoc.team.team_id }} • {{ assoc.team.department }}</p>
+									</td>
+									<td class="px-4 py-2 text-sm text-gray-600">{{ assoc.requested_at.strftime('%b %d, %Y') }}</td>
+									<td class="px-4 py-2 text-sm text-gray-600">{{ assoc.team.manager_name }}{% if assoc.team.manager_contact %} • {{ assoc.team.manager_contact }}{% endif %}</td>
+									<td class="px-4 py-2 text-right">
+										<a href="{{ url_for('smc.pending_teams', tournament_id=tournament.id) }}" class="inline-flex items-center justify-center px-3 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition">Review</a>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% else %}
+				<p class="text-sm text-gray-500">No pending requests. Share your registration link to invite new teams.</p>
+			{% endif %}
+		</section>
 
-    <!-- ADDED: Pending Join Requests Section -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">⏳ Pending Join Requests</h2>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Invited Teams</h2>
+			{% if invited_teams %}
+				<ul class="space-y-3 text-sm text-gray-700">
+					{% for assoc in invited_teams %}
+						<li class="border border-blue-200 rounded-lg px-4 py-3 bg-blue-50 flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<p class="font-medium text-blue-900">{{ assoc.team.name }}</p>
+								<p class="text-xs text-blue-700 mt-1">Team ID: {{ assoc.team.team_id }} • Invited {{ assoc.requested_at.strftime('%b %d, %Y') }}</p>
+							</div>
+							<span class="text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-blue-200 text-blue-900">Awaiting response</span>
+						</li>
+					{% endfor %}
+				</ul>
+			{% else %}
+				<p class="text-sm text-gray-500">No outstanding invitations. Invite an existing team from the manage teams page.</p>
+			{% endif %}
+		</section>
 
-      {% set pending_requests = tournament.tournament_teams|selectattr('status', 'equalto', 'pending')|list %}
-      {% if pending_requests %}
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left">
-            <thead class="bg-gray-100 border-b">
-              <tr>
-                <th class="px-4 py-3 font-medium text-gray-700">Team Name</th>
-                <th class="px-4 py-3 font-medium text-gray-700">Team ID</th>
-                <th class="px-4 py-3 font-medium text-gray-700">Department</th>
-                <th class="px-4 py-3 font-medium text-gray-700">Manager</th>
-                <th class="px-4 py-3 font-medium text-gray-700 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y">
-              {% for tt in pending_requests %}
-              <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 font-medium text-gray-800">{{ tt.team.name }}</td>
-                <td class="px-4 py-3 text-gray-600">{{ tt.team.team_id }}</td>
-                <td class="px-4 py-3 text-gray-600">{{ tt.team.department }}</td>
-                <td class="px-4 py-3 text-gray-600">{{ tt.team.manager_name }}</td>
-                <td class="px-4 py-3 text-center">
-                  <div class="flex gap-2 justify-center">
-                    <form method="POST" action="{{ url_for('smc.approve_team', tournament_id=tournament.id, team_id=tt.team.team_id) }}">
-                      <input type="hidden" name="action" value="approve">
-                      <button type="submit" 
-                              class="px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 font-medium transition">
-                        ✓ Approve
-                      </button>
-                    </form>
-                    <form method="POST" 
-                          action="{{ url_for('smc.approve_team', tournament_id=tournament.id, team_id=tt.team.team_id) }}"
-                          onsubmit="return confirm('Reject this team\'s request?');">
-                      <input type="hidden" name="action" value="reject">
-                      <button type="submit" 
-                              class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 font-medium transition">
-                        ✕ Reject
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <p class="text-gray-500 text-sm">No pending join requests.</p>
-      {% endif %}
-    </section>
+		<section id="teams-list" class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Teams in this Tournament</h2>
+			{% if tournament_teams %}
+				<div class="grid gap-4 md:grid-cols-2">
+					{% for assoc in tournament_teams %}
+						{% set team = assoc.team %}
+						<article class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+							<header class="flex items-start justify-between gap-3">
+								<div>
+									<h3 class="text-lg font-semibold text-gray-900">{{ team.name }}</h3>
+									<p class="text-sm text-gray-600 mt-1">Team ID: {{ team.team_id }} • Department: {{ team.department }}</p>
+								</div>
+								{% if team and not team.is_self_managed %}
+									<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">SMC managed</span>
+								{% else %}
+									<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Team managed</span>
+								{% endif %}
+							</header>
+							<p class="text-xs text-gray-500">Status: {{ assoc.status|capitalize }}</p>
+							<div class="mt-3 flex flex-wrap gap-2 text-sm">
+								<a href="{{ url_for('smc.view_team', team_id=team.team_id) }}" class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition">View team profile</a>
+								{% if team and not team.is_self_managed %}
+									<a href="{{ url_for('smc.edit_team_as_smc', team_id=team.team_id) }}" class="px-3 py-1 rounded border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition">Edit roster</a>
+								{% endif %}
+							</div>
+						</article>
+					{% endfor %}
+				</div>
+			{% else %}
+				<p class="text-sm text-gray-500">No teams registered yet. Use the actions above to invite or approve participants.</p>
+			{% endif %}
+		</section>
 
-    <!-- Teams List (Active Teams Only) -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">👥 Teams in This Tournament</h2>
+		{% if smc_managed_teams %}
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">SMC-managed Teams</h2>
+			<p class="text-sm text-gray-600 mb-4">These teams were created by your SMC account. Assign a manager when the handover is ready.</p>
+			<div class="space-y-3">
+				{% for assoc in smc_managed_teams %}
+					{% set team = assoc.team %}
+					<div class="flex flex-wrap items-center justify-between gap-3 border border-gray-200 rounded-lg px-4 py-3 bg-gray-50">
+						<div>
+							<p class="font-medium text-gray-900">{{ team.name }} • {{ team.team_id }}</p>
+							<p class="text-xs text-gray-500">Current manager: {{ team.manager_name or 'Unassigned' }}</p>
+						</div>
+						<button type="button" class="px-3 py-1.5 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition" data-team="{{ team.team_id }}" data-open-assign>Assign manager</button>
+					</div>
+					<div class="hidden mt-3" data-assign-block="{{ team.team_id }}">
+						<form method="POST" action="{{ url_for('smc.assign_manager', team_id=team.team_id) }}" class="flex flex-wrap items-center gap-2">
+							<label class="text-sm text-gray-700" for="manager_username_{{ team.team_id }}">Manager username</label>
+							<input id="manager_username_{{ team.team_id }}" name="manager_username" required class="flex-1 min-w-[12rem] border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Enter username" />
+							<button type="submit" class="px-3 py-2 rounded bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">Confirm</button>
+							<button type="button" class="px-3 py-2 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-100 transition" data-close-assign="{{ team.team_id }}">Cancel</button>
+						</form>
+					</div>
+				{% endfor %}
+			</div>
+		</section>
+		{% endif %}
 
-      {% if tournament_teams %}
-        <ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {% for tt in tournament_teams %}
-            {% if tt.status == 'active' or tt.status == 'eliminated' or tt.status == 'champion' %}
-            <li class="border rounded-lg p-4 relative">
-              <h3 class="font-semibold text-gray-800">{{ tt.team.name }}</h3>
-              <p class="text-sm text-gray-600">
-                Department: {{ tt.team.department or '—' }}
-              </p>
-              <p class="text-sm text-gray-600">
-                Manager: {{ tt.team.manager_name or '—' }}
-              </p>
-              {% if tt.status != 'active' %}
-                <span class="absolute top-2 right-2 px-2 py-1 text-xs rounded-full 
-                  {% if tt.status == 'champion' %}bg-yellow-100 text-yellow-700
-                  {% elif tt.status == 'eliminated' %}bg-gray-100 text-gray-600{% endif %}">
-                  {{ tt.status|capitalize }}
-                </span>
-              {% endif %}
-            </li>
-            {% endif %}
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-500 text-sm">No teams registered yet.</p>
-      {% endif %}
-    </section>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Upcoming Matches</h2>
+			{% if upcoming_matches %}
+				<ul class="space-y-3 text-sm text-gray-700">
+					{% for match in upcoming_matches %}
+						{% set team1_name = match.team1.name if match.team1 else match.team1_id %}
+						{% set team2_name = match.team2.name if match.team2 else match.team2_id %}
+						<li class="border border-gray-200 rounded-lg px-4 py-3 bg-gray-50">
+							<div class="font-medium text-gray-900">{{ match.versus_display or (team1_name ~ ' vs ' ~ team2_name) }}</div>
+							<div class="text-xs text-gray-500 mt-1">{{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') }} • {{ match.venue }}</div>
+						</li>
+					{% endfor %}
+				</ul>
+			{% else %}
+				<p class="text-sm text-gray-500">No upcoming matches scheduled. Add fixtures once participating teams are confirmed.</p>
+			{% endif %}
+		</section>
 
-    <!-- Upcoming Matches -->
-    <section class="bg-white border rounded-lg shadow p-6">
-      <h2 class="text-xl font-bold mb-4">🏁 Upcoming Matches</h2>
+		<section class="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+			<h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Results</h2>
+			{% if completed_matches %}
+				<ul class="space-y-3 text-sm text-gray-700">
+					{% for match in completed_matches %}
+						{% set team1_name = match.team1.name if match.team1 else match.team1_id %}
+						{% set team2_name = match.team2.name if match.team2 else match.team2_id %}
+						<li class="border border-gray-200 rounded-lg px-4 py-3 bg-white">
+							<div class="font-medium text-gray-900">{{ match.versus_display or (team1_name ~ ' vs ' ~ team2_name) }}</div>
+							<div class="text-xs text-gray-500 mt-1">Played {{ match.date.strftime('%b %d, %Y') }} at {{ match.venue }}</div>
+							<div class="text-xs text-gray-600 mt-1">{{ match.score_display }}</div>
+							<div class="text-xs text-gray-600">{{ match.result_display }}</div>
+						</li>
+					{% endfor %}
+				</ul>
+			{% else %}
+				<p class="text-sm text-gray-500">No results recorded yet. Publish completed match scores to keep followers informed.</p>
+			{% endif %}
+		</section>
 
-      {% if upcoming_matches %}
-        <ul class="divide-y">
-          {% for m in upcoming_matches %}
-            <li class="py-3 flex justify-between items-center">
-              <div>
-                <p class="font-medium text-gray-800">
-                  {{ m.versus_display or (m.team1.name ~ ' vs ' ~ m.team2.name) }}
-                </p>
-                <p class="text-sm text-gray-600">
-                  {{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}
-                </p>
-              </div>
-              <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-700">scheduled</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-500 text-sm">No upcoming matches.</p>
-      {% endif %}
-    </section>
+	</main>
 
-  </main>
+	<footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+		© 2025 TourneyTrackers. All rights reserved.
+	</footer>
+
+	<script>
+		document.querySelectorAll('[data-open-assign]').forEach((button) => {
+			button.addEventListener('click', () => {
+				const target = button.dataset.team;
+				const block = document.querySelector(`[data-assign-block="${target}"]`);
+				if (block) {
+					block.classList.remove('hidden');
+				}
+			});
+		});
+
+		document.querySelectorAll('[data-close-assign]').forEach((button) => {
+			button.addEventListener('click', () => {
+				const target = button.dataset.closeAssign;
+				const block = document.querySelector(`[data-assign-block="${target}"]`);
+				if (block) {
+					block.classList.add('hidden');
+				}
+			});
+		});
+	</script>
+
 </body>
 </html>
