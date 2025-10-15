@@ -202,42 +202,49 @@ class TestTeamRegistration:
 
     def test_register_new_team_success(self, authenticated_smc, tournament, flask_app):
         """Test registering a new team for tournament"""
-        response = authenticated_smc.post(f'/smc/tournament/{tournament.id}/register-team', data={
-            'team_name': 'New Team',
-            'team_id': 'TEAM001',
-            'department': 'CS',
-            'manager_name': 'Manager Name',
-            'manager_contact': '1234567890',
-            'player_1_name': 'Player 1',
-            'player_1_roll': '101'
-        }, follow_redirects=True)
+        response = authenticated_smc.post(
+            f'/smc/tournament/{tournament.id}/register-team',
+            data={
+                'action': 'create',
+                'team_name': 'New Team',
+                'department': 'CS',
+                'team_institution': '',
+            },
+            follow_redirects=True,
+        )
         
         assert response.status_code == 200
         
         # Verify team created
         with flask_app.app_context():
-            team = Team.query.filter_by(team_id='TEAM001').first()
+            team = Team.query.filter_by(name='New Team').first()
             assert team is not None
+            assert team.team_id.startswith('TM')
 
     def test_register_existing_team_to_tournament(self, authenticated_smc, tournament, team, flask_app):
         """Test adding existing team to tournament"""
-        response = authenticated_smc.post(f'/smc/tournament/{tournament.id}/register-team', data={
-            'team_name': 'Existing Team',
-            'team_id': team.team_id,
-            'department': 'CS',
-            'manager_name': 'Manager'
-        }, follow_redirects=True)
+        response = authenticated_smc.post(
+            f'/smc/tournament/{tournament.id}/register-team',
+            data={
+                'action': 'invite_existing',
+                'existing_team_id': team.team_id,
+            },
+            follow_redirects=True,
+        )
         
         assert response.status_code == 200
 
     def test_register_team_validates_required_fields(self, authenticated_smc, tournament):
         """Test team registration validates required fields"""
-        response = authenticated_smc.post(f'/smc/tournament/{tournament.id}/register-team', data={
-            'team_name': '',
-            'team_id': 'TEAM001',
-            'department': 'CS',
-            'manager_name': 'Manager'
-        }, follow_redirects=True)
+        response = authenticated_smc.post(
+            f'/smc/tournament/{tournament.id}/register-team',
+            data={
+                'action': 'create',
+                'team_name': '',
+                'department': 'CS',
+            },
+            follow_redirects=True,
+        )
         
         assert response.status_code == 200
 

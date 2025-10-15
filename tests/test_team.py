@@ -243,7 +243,8 @@ class TestBrowseTournaments:
         
         response = authenticated_team_manager.get('/team/browse-tournaments')
         assert response.status_code == 200
-        assert b'Joined' in response.data or b'joined' in response.data
+        assert b'Teams already participating' in response.data
+        assert self_managed_team.name.encode() in response.data
 
     def test_browse_tournaments_shows_pending_status(self, authenticated_team_manager, self_managed_team, tournament, flask_app):
         """Test browse page shows pending join requests"""
@@ -255,7 +256,8 @@ class TestBrowseTournaments:
         
         response = authenticated_team_manager.get('/team/browse-tournaments')
         assert response.status_code == 200
-        assert b'Pending' in response.data or b'pending' in response.data
+        assert b'Pending approvals' in response.data
+        assert b'awaiting SMC decision' in response.data
     
     def test_browse_tournaments_shows_past_and_future(self, authenticated_team_manager, past_tournament, future_tournament, self_managed_team):
         """Test browse shows all tournaments regardless of status"""
@@ -637,7 +639,7 @@ class TestTeamDashboardOverview:
         assert b'Team Manager Dashboard' in response.data
         assert b'Dashboard Squad' in response.data
         assert b'Review the tournament invitation.' in response.data
-        assert b'text-red-400">1<' in response.data
+        assert b'text-3xl font-semibold text-blue-700 mt-1">1<' in response.data
 
 
 class TestTeamNotifications:

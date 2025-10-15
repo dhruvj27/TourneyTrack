@@ -22,6 +22,7 @@ class TestAuthRegistrationRoute:
             'password': 'NewSmc@123',  # Meets validation
             'role': 'smc',
             'institution': 'Tech University',
+            'phone_number': '+919876543210',
         })
         
         # Should redirect after success
@@ -32,6 +33,7 @@ class TestAuthRegistrationRoute:
         assert user is not None
         assert user.role == 'smc'
         assert user.email == 'newsmc@test.com'
+        assert user.phone_number == '+919876543210'
 
     def test_smc_registration_allows_missing_institution(self, client):
         """SMC registration should allow optional institution field."""
@@ -61,6 +63,21 @@ class TestAuthRegistrationRoute:
         user = User.query.filter_by(username='newmanager').first()
         assert user is not None
         assert user.role == 'team_manager'
+        assert user.phone_number is None
+
+    def test_registration_rejects_invalid_phone(self, client):
+        """Phone number with invalid characters should raise validation error."""
+        response = client.post('/auth/register', data={
+            'username': 'badphone',
+            'email': 'badphone@test.com',
+            'password': 'Valid@123',
+            'role': 'smc',
+            'phone_number': 'abc12345',
+        }, follow_redirects=True)
+
+        assert b'phone number' in response.data.lower()
+        user = User.query.filter_by(username='badphone').first()
+        assert user is None
 
     def test_registration_duplicate_username(self, client, smc_user):
         """Test cannot register with existing username"""
@@ -238,7 +255,7 @@ class TestAuthLoginRoute:
         })
         
         # Verify can access protected SMC page
-        response = client.get('/smc-dashboard')
+        response = client.get('/smc/dashboard')
         assert response.status_code == 200
 
     def test_login_role_based_redirect_smc(self, client, smc_user):
@@ -276,7 +293,7 @@ class TestAuthLogoutRoute:
         assert b'logged out' in response.data.lower()
         
         # Verify session cleared by trying to access protected page
-        response = client.get('/smc-dashboard')
+        response = client.get('/smc/dashboard')
         assert response.status_code == 302  # Should redirect to login
 
     def test_logout_clears_session_team_manager(self, client, team_manager_user):
@@ -292,7 +309,7 @@ class TestAuthLogoutRoute:
         assert b'logged out' in response.data.lower()
         
         # Verify session cleared by trying to access protected page
-        response = client.get('/team-dashboard')
+        response = client.get('/team/dashboard')
         assert response.status_code == 302  # Should redirect to login
 
 
@@ -305,7 +322,8 @@ class TestUserModel:
             username='newuser',
             email='user@test.com',
             password='Test@123',
-            role='smc'
+            role='smc',
+            phone_number='+911234567890',
         )
         
         assert errors == []
@@ -405,6 +423,19 @@ class TestUserModel:
         
         assert len(errors) > 0
         assert any('role' in e.lower() for e in errors)
+
+    def test_validate_format_invalid_phone(self):
+        """Test validate_format catches badly formatted phone numbers"""
+        errors = User.validate_format(
+            username='validuser',
+            email='user@test.com',
+            password='Test@123',
+            role='smc',
+            phone_number='123abc',
+        )
+
+        assert len(errors) > 0
+        assert any('phone number' in e.lower() for e in errors)
 
     def test_user_password_hashing(self):
         """Test user password is hashed correctly"""

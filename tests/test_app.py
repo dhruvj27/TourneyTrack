@@ -660,26 +660,38 @@ def test_register_team_requires_smc_session(client):
 
 def test_register_team_creates_team_and_enrols_in_default_tournament(authenticated_smc, flask_app):
     """Back-compat registration should create team and tournament link."""
-    payload = {
-        'team_name': 'Legacy Lions',
-        'team_id': 'LEGACY01',
-        'department': 'CSE',
-        'manager_name': 'Legacy Manager',
-        'manager_contact': '9876543210',
-    }
-
-    response = authenticated_smc.post('/register-team', data=payload)
-    assert response.status_code == 302
-    assert '/smc-dashboard' in response.headers.get('Location', '')
-
     with flask_app.app_context():
-        team = Team.query.filter_by(team_id='LEGACY01').first()
-        assert team is not None
         default_tournament = get_default_tournament()
         assert default_tournament is not None
-        association = TournamentTeam.query.filter_by(team_id='LEGACY01').first()
+        default_id = default_tournament.id
+
+    response = authenticated_smc.post('/register-team')
+    assert response.status_code == 302
+    redirected_to = response.headers.get('Location', '')
+    assert redirected_to.endswith(f'/smc/tournament/{default_id}/register-team')
+
+    creation = authenticated_smc.post(
+        f'/smc/tournament/{default_id}/register-team',
+        data={
+            'action': 'create',
+            'team_name': 'Legacy Lions',
+            'department': 'CSE',
+            'team_institution': '',
+        },
+        follow_redirects=True,
+    )
+    assert creation.status_code == 200
+
+    with flask_app.app_context():
+        team = Team.query.filter_by(name='Legacy Lions').first()
+        assert team is not None
+        assert team.team_id.startswith('TM')
+
+        association = TournamentTeam.query.filter_by(
+            team_id=team.team_id,
+            tournament_id=default_id,
+        ).first()
         assert association is not None
-        assert association.tournament_id == default_tournament.id
 
 
 def test_logout_clears_legacy_session(client):

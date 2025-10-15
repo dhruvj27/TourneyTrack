@@ -242,7 +242,7 @@ class TestTeamModel:
             db.session.commit()
 
             assert team.managed_by == smc.id
-            assert team.is_self_managed is True
+            assert team.is_self_managed is False
 
     def test_assign_manager_updates_and_notifies(self, flask_app, smc_user, team_manager_user):
         with flask_app.app_context():
@@ -264,7 +264,7 @@ class TestTeamModel:
             db.session.commit()
 
             assert team.managed_by == manager.id
-            assert team.is_self_managed is False
+            assert team.is_self_managed is True
 
             notifications = Notification.query.filter_by(user_id=manager.id, kind='team_assignment').all()
             assert len(notifications) == 1
