@@ -66,6 +66,9 @@
       <h1 class="text-4xl font-bold text-gray-900">Welcome to TourneyTrackers</h1>
       {% if featured_tournament %}
         <p class="text-gray-600 mt-2">Spotlight: {{ featured_tournament.name }} • {{ featured_tournament.start_date.strftime('%b %d, %Y') }} – {{ featured_tournament.end_date.strftime('%b %d, %Y') }}</p>
+        {% if featured_tournament.sport %}
+        <p class="text-sm text-blue-600 font-medium mt-1">Sport: {{ featured_tournament.sport }}</p>
+        {% endif %}
       {% else %}
         <p class="text-gray-600 mt-2">Create a tournament to get the action started.</p>
       {% endif %}
@@ -134,6 +137,9 @@
                   <h3 class="text-xl font-semibold text-gray-900">{{ event.name }}</h3>
                   <p class="text-sm text-gray-600 mt-1">{{ event.start_date.strftime('%b %d, %Y') }} – {{ event.end_date.strftime('%b %d, %Y') }}</p>
                   <p class="text-xs text-gray-500 mt-1">Institution: {{ event.institution or 'Open to all' }}</p>
+                  {% if event.sport %}
+                    <p class="text-xs text-blue-600 font-medium uppercase tracking-wide">Sport: {{ event.sport }}</p>
+                  {% endif %}
                   {% if event.location is defined and event.location %}
                     <p class="text-xs text-gray-500">Location: {{ event.location }}</p>
                   {% endif %}

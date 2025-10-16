@@ -138,6 +138,9 @@
 							{% if tournament.institution %}
 								<p class="text-xs text-gray-500">Institution: {{ tournament.institution }}</p>
 							{% endif %}
+							{% if tournament.sport %}
+								<p class="text-xs text-blue-600 font-semibold uppercase tracking-wide mt-1">Sport: {{ tournament.sport }}</p>
+							{% endif %}
 						</li>
 					{% endfor %}
 				</ul>

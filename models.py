@@ -23,6 +23,15 @@ AVAILABLE_INSTITUTIONS = (
     'Commerce College',
 )
 
+AVAILABLE_SPORTS = (
+    'Football/Soccer',
+    'Basketball',
+    'Hockey',
+    'Handball',
+    'Futsal',
+    'Other',
+)
+
 DEFAULT_MATCH_DURATION_MINUTES = 90
 
 
@@ -447,6 +456,7 @@ class Tournament(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     institution = db.Column(db.String(100))
     location = db.Column(db.String(100))
+    sport = db.Column(db.String(50), default='Other')
     tournament_type = db.Column(db.String(20), default='league')
     created_at = db.Column(db.DateTime, default=current_time)
 
@@ -475,6 +485,8 @@ class Tournament(db.Model):
 
     def ensure_bracket(self) -> 'Bracket':
         if self.bracket:
+            if self.tournament_type and self.bracket.format != self.tournament_type:
+                self.bracket.format = self.tournament_type
             return self.bracket
         bracket = Bracket(
             tournament_id=self.id,
@@ -810,6 +822,9 @@ def init_default_data():
             rules='Standard inter-department tournament rules apply.',
             created_by=admin.id,
             institution=admin.institution,
+            sport=AVAILABLE_SPORTS[0],
+            location='Heritage Institute Grounds',
+            tournament_type='league',
         )
         db.session.add(tournament)
 
@@ -851,6 +866,8 @@ def ensure_schema_integrity():
 
     migrations: list[tuple[str, str]] = []
 
+    if 'sport' not in tournament_columns:
+        migrations.append(('tournament', "ALTER TABLE tournament ADD COLUMN sport VARCHAR(50) DEFAULT 'Other'"))
     if 'tournament_type' not in tournament_columns:
         migrations.append(('tournament', 'ALTER TABLE tournament ADD COLUMN tournament_type VARCHAR(20) DEFAULT "league"'))
     if 'location' not in tournament_columns:

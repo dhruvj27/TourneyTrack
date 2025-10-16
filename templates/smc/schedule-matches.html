@@ -121,9 +121,9 @@
                 <p class="text-xs text-emerald-800">Round {{ m.round_number or '—' }}{% if m.stage %} • {{ m.stage }}{% endif %}</p>
               </div>
               <form method="POST" action="{{ url_for('smc.update_match_status', tournament_id=tournament.id, match_id=m.id) }}" class="flex items-center gap-2">
-                <input type="hidden" name="status" value="scheduled" />
+                <input type="hidden" name="status" value="completed" />
                 <input type="hidden" name="next" value="{{ request.path }}" />
-                <button type="submit" class="px-3 py-1.5 rounded-md bg-white/70 text-sm font-semibold text-emerald-700 border border-emerald-300 hover:bg-white">Mark as scheduled</button>
+                <button type="submit" class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">Mark as completed</button>
               </form>
             </li>
           {% endfor %}

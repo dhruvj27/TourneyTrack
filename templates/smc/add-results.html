@@ -61,13 +61,13 @@
 
   {% macro team_code(tid) -%}
     {%- for t in teams -%}
-      {%- if t.id == tid -%}{{ t.team_id }}{%- endif -%}
+      {%- if t.team_id == tid -%}{{ t.team_id }}{%- endif -%}
     {%- endfor -%}
   {%- endmacro %}
 
   {% macro team_name(tid) -%}
     {%- for t in teams -%}
-      {%- if t.id == tid -%}{{ t.name }}{%- endif -%}
+      {%- if t.team_id == tid -%}{{ t.name }}{%- endif -%}
     {%- endfor -%}
   {%- endmacro %}
 
@@ -86,6 +86,7 @@
                 {% set t2n = m.team2.name if m.team2 else team_name(m.team2_id) %}
                 {% set t1c = team_code(m.team1_id) %}
                 {% set t2c = team_code(m.team2_id) %}
+                {% set stage_label = m.stage or (m.round_number and 'Round ' ~ m.round_number) %}
                 <option value="{{ m.id }}" 
                         data-team1-id="{{ m.team1_id }}"
                         data-team2-id="{{ m.team2_id }}"
@@ -93,7 +94,7 @@
                         data-team2-name="{{ (t2n or 'Team 2')|e }}"
                         data-team1-code="{{ (t1c or '')|e }}"
                         data-team2-code="{{ (t2c or '')|e }}">
-                  {{ (t1c or 'T1') }} {{ (t1n and '(' ~ t1n ~ ')') or '' }} vs {{ (t2c or 'T2') }} {{ (t2n and '(' ~ t2n ~ ')') or '' }} • {{ m.date.strftime('%b %d, %Y') }} {{ m.time.strftime('%H:%M') }} @ {{ m.venue }}
+                  {{ (t1c or 'T1') }} {{ (t1n and '(' ~ t1n ~ ')') or '' }} vs {{ (t2c or 'T2') }} {{ (t2n and '(' ~ t2n ~ ')') or '' }} • {{ m.date.strftime('%b %d, %Y') }} {{ m.time.strftime('%H:%M') }} @ {{ m.venue }}{% if stage_label %} • {{ stage_label }}{% endif %}
                 </option>
               {% endfor %}
             </select>

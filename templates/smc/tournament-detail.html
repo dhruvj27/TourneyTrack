@@ -57,6 +57,7 @@
 				<h1 class="text-3xl font-semibold text-gray-900">{{ tournament.name }}</h1>
 				<p class="text-sm text-gray-600">{{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }} • Status: {{ tournament.status|capitalize }}</p>
 				<p class="text-sm text-gray-600">Institution: {{ tournament.institution or 'Open to all' }}{% if tournament.location %} • Location: {{ tournament.location }}{% endif %}</p>
+				{% if tournament.sport %}<p class="text-xs font-semibold uppercase tracking-wider text-blue-700">Sport: {{ tournament.sport }}</p>{% endif %}
 				<p class="text-xs text-gray-500">Created {{ tournament.created_at.strftime('%b %d, %Y') }} • Managed by {{ g.current_user.username }}</p>
 			</div>
 			<a href="{{ url_for('smc.schedule_matches', tournament_id=tournament.id) }}" class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">Manage Schedule</a>

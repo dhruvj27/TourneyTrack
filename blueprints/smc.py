@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from datetime import datetime, date, time, timedelta
 import math
 from functools import wraps
@@ -17,6 +17,7 @@ from models import (
     Notification,
     get_default_tournament,
     DEFAULT_MATCH_DURATION_MINUTES,
+    AVAILABLE_SPORTS,
 )
 from blueprints.auth import require_smc
 
@@ -290,6 +291,9 @@ def dashboard():
     upcoming_matches = []
     recent_results = []
 
+    pending_target_id = pending_summary[0]['tournament'].id if pending_summary else None
+    review_target_id = pending_target_id or (my_tournaments[0].id if my_tournaments else None)
+
     if tournament_ids:
         live_matches = (
             Match.query.options(joinedload(Match.team1), joinedload(Match.team2))
@@ -333,6 +337,8 @@ def dashboard():
         upcoming_matches=upcoming_matches,
         recent_results=recent_results,
         pending_summary=pending_summary,
+        pending_target_id=pending_target_id,
+        review_target_id=review_target_id,
     )
 
 
@@ -349,6 +355,10 @@ def create_tournament():
             institution = request.form.get('institution', '').strip() or g.current_user.institution
             location = request.form.get('location', '').strip()
             tournament_type = request.form.get('tournament_type', 'league')
+            sport = request.form.get('sport', 'Other')
+
+            if sport not in AVAILABLE_SPORTS:
+                sport = 'Other'
 
             if tournament_type not in {'league', 'knockout'}:
                 flash('Please choose a valid tournament format.', 'error')
@@ -381,6 +391,7 @@ def create_tournament():
                 created_by=g.current_user.id,
                 institution=institution,
                 location=location,
+                sport=sport,
                 tournament_type=tournament_type,
             )
 
@@ -396,7 +407,7 @@ def create_tournament():
             db.session.rollback()
             flash(f'Error creating tournament: {str(e)}', 'error')
     
-    return render_template('smc/create-tournament.html')
+    return render_template('smc/create-tournament.html', sports=AVAILABLE_SPORTS)
 
 
 @smc_bp.route('/notifications')
@@ -1072,7 +1083,7 @@ def update_match_status(tournament_id, match_id):
     new_status = request.form.get('status', 'scheduled')
     next_url = request.form.get('next') or url_for('smc.schedule_matches', tournament_id=tournament_id)
 
-    if new_status not in {'scheduled', 'active'}:
+    if new_status not in {'scheduled', 'active', 'completed'}:
         flash('Unsupported status update.', 'error')
         return redirect(next_url)
 
@@ -1083,7 +1094,12 @@ def update_match_status(tournament_id, match_id):
     match.status = new_status
     db.session.commit()
 
-    label = 'live' if new_status == 'active' else 'scheduled'
+    if new_status == 'active':
+        label = 'live'
+    elif new_status == 'completed':
+        label = 'completed'
+    else:
+        label = 'scheduled'
     flash(f'Match {match.versus_display} is now marked as {label}.', 'success')
     return redirect(next_url)
 
@@ -1106,10 +1122,6 @@ def add_results(tournament_id):
                 flash('Match does not belong to this tournament!', 'error')
                 return redirect(url_for('smc.add_results', tournament_id=tournament_id))
             
-            if match.status == 'completed':
-                flash('Results have already been entered for this match!', 'error')
-                return redirect(url_for('smc.add_results', tournament_id=tournament_id))
-
             if match.date > date.today():
                 flash('Cannot enter results for future matches!', 'error')
                 return redirect(url_for('smc.add_results', tournament_id=tournament_id))
@@ -1144,11 +1156,25 @@ def add_results(tournament_id):
     
     # Get matches that can have results added
     today = date.today()
-    pending_matches = Match.query.filter(
-        Match.tournament_id == tournament_id,
-        Match.status == 'scheduled',
-        Match.date <= today
-    ).order_by(Match.date, Match.time).all()
+    pending_matches = (
+        Match.query.filter(
+            Match.tournament_id == tournament_id,
+            Match.date <= today,
+            or_(
+                Match.status.in_(['scheduled', 'active']),
+                and_(
+                    Match.status == 'completed',
+                    or_(
+                        Match.team1_score.is_(None),
+                        Match.team2_score.is_(None),
+                        Match.winner_id.is_(None),
+                    ),
+                ),
+            ),
+        )
+        .order_by(Match.date, Match.time)
+        .all()
+    )
     
     # Get completed matches
     completed_matches = Match.query.filter(

@@ -90,7 +90,11 @@
           <h2 class="text-xl font-semibold text-gray-900">Pending reviews</h2>
           <p class="text-sm text-gray-600">{{ stats.pending_requests }} join requests • {{ stats.pending_invites }} invitations awaiting responses</p>
         </div>
-        <a href="#" onclick="document.getElementById('pending-reviews').scrollIntoView({behavior: 'smooth'}); return false;" class="text-sm text-blue-700 hover:underline">Jump to list</a>
+        {% set jump_disabled = not pending_target_id %}
+        <a href="{{ url_for('smc.pending_teams', tournament_id=pending_target_id) if pending_target_id else '#' }}"
+           class="text-sm text-blue-700 hover:underline {% if jump_disabled %}pointer-events-none opacity-60{% endif %}">
+          Pending team list
+        </a>
       </header>
       <div id="pending-reviews" class="mt-4 space-y-4">
         {% for entry in pending_summary %}
@@ -99,6 +103,9 @@
             <div>
               <h3 class="text-lg font-semibold text-gray-900">{{ entry.tournament.name }}</h3>
               <p class="text-xs text-gray-500">{{ entry.tournament.start_date.strftime('%b %d') }} – {{ entry.tournament.end_date.strftime('%b %d') }}</p>
+              {% if entry.tournament.sport %}
+              <p class="text-xs text-blue-700 font-medium uppercase tracking-wide">Sport: {{ entry.tournament.sport }}</p>
+              {% endif %}
             </div>
             <div class="flex gap-2 text-xs">
               <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">{{ entry.requests|length }} requests</span>
@@ -116,7 +123,17 @@
                       <p class="font-semibold text-gray-900">{{ assoc.team.name }}</p>
                       <p class="text-xs text-gray-500">Requested {{ assoc.requested_at.strftime('%b %d, %Y') }}</p>
                     </div>
-                    <a href="{{ url_for('smc.pending_teams', tournament_id=entry.tournament.id) }}" class="text-xs text-blue-700 hover:underline">Review</a>
+                    <div class="flex items-center gap-2">
+                      <form method="POST" action="{{ url_for('smc.approve_team', tournament_id=entry.tournament.id, team_id=assoc.team.team_id) }}">
+                        <input type="hidden" name="action" value="approve" />
+                        <button type="submit" class="px-2 py-1 rounded bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">Approve</button>
+                      </form>
+                      <form method="POST" action="{{ url_for('smc.approve_team', tournament_id=entry.tournament.id, team_id=assoc.team.team_id) }}" onsubmit="return confirm('Reject this team request?');">
+                        <input type="hidden" name="action" value="reject" />
+                        <button type="submit" class="px-2 py-1 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700">Reject</button>
+                      </form>
+                      <a href="{{ url_for('smc.pending_teams', tournament_id=entry.tournament.id) }}" class="px-2 py-1 rounded border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50">View</a>
+                    </div>
                   </li>
                 {% endfor %}
                 {% if entry.requests|length > 3 %}
@@ -217,6 +234,9 @@
                 <article class="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <h3 class="text-lg font-semibold text-gray-900">{{ t.name }}</h3>
                   <p class="text-sm text-gray-600 mt-1">{{ t.start_date.strftime('%b %d, %Y') }} – {{ t.end_date.strftime('%b %d, %Y') }}</p>
+                  {% if t.sport %}
+                  <p class="text-xs text-blue-700 font-medium uppercase tracking-wide mt-1">Sport: {{ t.sport }}</p>
+                  {% endif %}
                   <p class="text-xs text-gray-500 mt-1">Status: {{ t.status|capitalize }}</p>
                   <div class="mt-4 flex flex-wrap gap-2 text-sm">
                     <a href="{{ url_for('smc.tournament_detail', tournament_id=t.id) }}" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition">Open details</a>
@@ -237,7 +257,7 @@
               <h3 class="text-lg font-semibold text-blue-800">Create tournament</h3>
               <p class="text-sm text-blue-700 mt-1">Spin up a new event with schedule and rules.</p>
             </a>
-            <a href="{{ url_for('smc.pending_teams', tournament_id=tournaments[0].id) if tournaments else '#' }}" class="border border-amber-200 bg-amber-50 hover:bg-amber-100 transition rounded-lg px-4 py-4 {% if not tournaments %}pointer-events-none opacity-60{% endif %}">
+            <a href="{{ url_for('smc.pending_teams', tournament_id=review_target_id) if review_target_id else '#' }}" class="border border-amber-200 bg-amber-50 hover:bg-amber-100 transition rounded-lg px-4 py-4 {% if not review_target_id %}pointer-events-none opacity-60{% endif %}">
               <h3 class="text-lg font-semibold text-amber-800">Review join requests</h3>
               <p class="text-sm text-amber-700 mt-1">{{ stats.pending_requests }} join requests • {{ stats.pending_invites }} invites open.</p>
             </a>

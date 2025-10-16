@@ -59,6 +59,7 @@
                   <h2 class="text-2xl font-semibold text-gray-900">{{ tournament.name }}</h2>
                   <p class="text-sm text-gray-600 mt-1">{{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }} • Status: <span class="font-medium text-gray-800">{{ tournament.status|capitalize }}</span></p>
                   <p class="text-xs text-gray-500 mt-1">{{ tournament.institution or 'Open to all institutions' }}</p>
+                  {% if tournament.sport %}<p class="text-xs text-blue-600 font-semibold uppercase tracking-wide mt-1">Sport: {{ tournament.sport }}</p>{% endif %}
                 </div>
                 <div class="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
                   <p><span class="font-semibold">Active Teams:</span> {{ entry.joined_teams|length }}</p>

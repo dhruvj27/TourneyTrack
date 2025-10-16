@@ -166,9 +166,13 @@ def mark_notification_read(notification_id):
     note.is_read = True
     if request.form.get('resolve') == '1':
         note.resolve()
+        target_status = 'resolved'
+    else:
+        note.status = 'archived'
+        target_status = 'archived'
     db.session.commit()
     flash('Notification updated.', 'success')
-    return redirect(url_for('team.notifications', status=request.args.get('status', 'active')))
+    return redirect(url_for('team.notifications', status=request.args.get('status', target_status)))
 
 
 @team_bp.route('/create-team', methods=['GET', 'POST'])
@@ -360,7 +364,7 @@ def browse_tournaments():
             if not assoc:
                 continue
 
-            if assoc.status == 'active':
+            if assoc.status in {'active', 'champion', 'eliminated'}:
                 joined_entries.append({'team': team, 'association': assoc})
             elif assoc.status == 'pending':
                 if assoc.registration_method == 'smc_invited':
