@@ -117,6 +117,16 @@
             </select>
           </div>
 
+          <div class="grid gap-4 md:grid-cols-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1" for="match_status">Match status</label>
+              <select name="match_status" id="match_status" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="completed">Completed</option>
+                <option value="active">Active / In progress</option>
+              </select>
+            </div>
+          </div>
+
           <div class="flex justify-end">
             <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition">Save result</button>
           </div>
@@ -144,7 +154,7 @@
                   –
                   {{ m.team2_score if m.team2_score is not none else '-' }} {{ (t2c or 'T2') }} {{ (t2n and '(' ~ t2n ~ ')') or '' }}
                 </p>
-                <span class="text-xs text-gray-500">{{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }}</span>
+                <span class="text-xs text-gray-500">{{ m.date.strftime('%b %d, %Y') }} • {{ m.time.strftime('%H:%M') }} • {{ m.venue }} • {{ m.duration_label }}</span>
               </div>
               <p class="text-xs text-gray-500 mt-2"><span class="font-medium text-gray-700">Winner:</span> {% if m.winner_id %}{{ (wc or '') }} {{ (wn and '(' ~ wn ~ ')') or '' }}{% else %}Draw{% endif %}</p>
             </li>

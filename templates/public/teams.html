@@ -1,0 +1,65 @@
+{% extends 'public_layout.html' %}
+{% block title %}Teams{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+  <h1 class="text-3xl font-semibold text-gray-900">Teams</h1>
+  <p class="text-sm text-gray-600 mt-2">Browse teams participating across tournaments.</p>
+</header>
+
+{% if teams %}
+  <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+    {% for team in teams %}
+      <article class="border border-gray-200 rounded-xl p-6 bg-white shadow-sm">
+        <header class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">
+              <a href="{{ url_for('public.team_profile', team_id=team.team_id) }}" class="hover:text-blue-600 transition">{{ team.name }}</a>
+            </h2>
+            <p class="text-xs text-gray-500 mt-1">{{ team.department }} • {{ team.team_id }}</p>
+          </div>
+          {% if team.is_self_managed %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Team managed</span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">SMC managed</span>
+          {% endif %}
+        </header>
+
+        <p class="text-xs text-gray-500 mt-2">Manager: {{ team.manager_name or '—' }}{% if team.manager_contact %} • {{ team.manager_contact }}{% endif %}</p>
+
+        {% if team.players %}
+          <div class="mt-4">
+            <p class="text-xs uppercase text-gray-500 mb-2">Active players ({{ team.players|selectattr('is_active')|list|length }})</p>
+            <ul class="text-sm text-gray-600 space-y-1">
+              {% for player in team.players if player.is_active %}
+                <li>{{ player.name }}</li>
+                {% if loop.index == 4 and team.players|length > 4 %}
+                  <li class="text-xs text-gray-400">and {{ team.players|length - 4 }} more…</li>
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if team.tournament_teams %}
+          <div class="mt-4">
+            <p class="text-xs uppercase text-gray-500 mb-2">Tournaments</p>
+            <ul class="text-sm text-gray-600 space-y-1">
+              {% for assoc in team.tournament_teams %}
+                <li>{{ assoc.tournament.name }} • {{ assoc.status|capitalize }}</li>
+                {% if loop.index == 3 and team.tournament_teams|length > 3 %}
+                  <li class="text-xs text-gray-400">and {{ team.tournament_teams|length - 3 }} more…</li>
+                  {% break %}
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-sm text-gray-500">No teams available.</p>
+{% endif %}
+{% endblock %}

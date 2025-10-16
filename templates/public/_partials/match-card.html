@@ -1,0 +1,16 @@
+{% macro match_card(match, accent='blue') -%}
+  <article class="border border-{{ accent }}-200 rounded-xl p-4 bg-{{ accent }}-50">
+    <header class="flex items-center justify-between">
+      <h3 class="font-semibold text-gray-900">{{ match.versus_display }}</h3>
+      {% if match.status == 'active' %}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-emerald-700">Live</span>
+      {% elif match.status == 'completed' and match.winner %}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Winner: {{ match.winner.name }}</span>
+      {% endif %}
+    </header>
+    <p class="text-xs text-gray-500 mt-1">{{ match.tournament.name }} • {{ match.date.strftime('%b %d, %Y') }} • {{ match.venue }} • {{ match.duration_label }}</p>
+    {% if match.status == 'completed' %}
+      <p class="text-sm text-gray-700 mt-2">{{ match.score_display }}</p>
+    {% endif %}
+  </article>
+{%- endmacro %}

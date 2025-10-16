@@ -1,0 +1,200 @@
+{% extends 'public_layout.html' %}
+{% block title %}{{ tournament.name }}{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900">{{ tournament.name }}</h1>
+      <p class="text-sm text-gray-600 mt-1">
+        {{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }} • {{ tournament.status|capitalize }}
+      </p>
+      <p class="text-xs text-gray-500">
+        Hosted by {{ tournament.institution or 'Open' }}{% if tournament.location %} • {{ tournament.location }}{% endif %}
+      </p>
+    </div>
+    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+      {{ tournament.tournament_type|capitalize }} format
+    </span>
+  </div>
+
+  {% if tournament.rules %}
+    <div class="mt-4 border border-gray-200 rounded-lg bg-gray-50 p-4 text-sm text-gray-700 whitespace-pre-line">
+      {{ tournament.rules }}
+    </div>
+  {% endif %}
+</header>
+
+<section class="grid gap-6 md:grid-cols-3 mb-10">
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Teams</p>
+    <p class="text-2xl font-semibold text-gray-900 mt-2">{{ tournament.tournament_teams|length }}</p>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Live matches</p>
+    <p class="text-2xl font-semibold text-emerald-600 mt-2">{{ live_matches|length }}</p>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Completed matches</p>
+    <p class="text-2xl font-semibold text-green-600 mt-2">{{ completed_matches|length }}</p>
+  </div>
+</section>
+
+{% if bracket %}
+<section class="mb-12">
+  <header class="mb-4 flex items-center justify-between gap-3">
+    <h2 class="text-xl font-semibold text-gray-900">Bracket configuration</h2>
+    <span class="text-xs uppercase tracking-wide px-3 py-1 rounded-full bg-blue-100 text-blue-700">{{ bracket.format|capitalize }}</span>
+  </header>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    {% if bracket.format == 'league' %}
+      <p class="text-sm text-gray-600">League standings reflect points across all fixtures. Points: win {{ bracket.points_win }}, draw {{ bracket.points_draw }}, loss {{ bracket.points_loss }}.</p>
+    {% else %}
+      <p class="text-sm text-gray-600">Knockout bracket configured manually. Matches progress by round number and stage labels.</p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Live matches</h2>
+  {% if live_matches %}
+    <ul class="grid gap-4 md:grid-cols-2">
+      {% for match in live_matches %}
+        <li class="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-semibold text-gray-900">{{ match.versus_display }}</p>
+              <p class="text-xs text-emerald-700">{{ match.date.strftime('%b %d, %Y') }} • {{ match.venue }}</p>
+            </div>
+            <span class="text-xs uppercase font-semibold text-emerald-700">Live</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-2">Round {{ match.round_number or '—' }}{% if match.stage %} • {{ match.stage }}{% endif %}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-gray-500">No live matches at the moment.</p>
+  {% endif %}
+</section>
+
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Upcoming fixtures</h2>
+  {% if upcoming_matches %}
+    <div class="overflow-hidden rounded-xl border border-gray-200">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-gray-600">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium">Fixture</th>
+            <th class="px-4 py-2 text-left font-medium">Schedule</th>
+            <th class="px-4 py-2 text-left font-medium">Venue</th>
+            <th class="px-4 py-2 text-left font-medium">Bracket</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for match in upcoming_matches %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ match.versus_display }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ match.date.strftime('%b %d, %Y') }} • {{ match.time.strftime('%H:%M') }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ match.venue }}</td>
+            <td class="px-4 py-3 text-gray-500">
+              Round {{ match.round_number or '—' }}{% if match.stage %} • {{ match.stage }}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No upcoming matches scheduled.</p>
+  {% endif %}
+</section>
+
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent results</h2>
+  {% if completed_matches %}
+    <div class="grid gap-4 md:grid-cols-2">
+      {% for match in completed_matches %}
+        <article class="border border-gray-200 rounded-xl p-4 bg-white">
+          <header class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">{{ match.versus_display }}</h3>
+            {% if match.winner %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Winner: {{ match.winner.name }}</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Draw</span>
+            {% endif %}
+          </header>
+          <p class="text-xs text-gray-500 mt-1">Played {{ match.date.strftime('%b %d, %Y') }} • {{ match.venue }}</p>
+          <p class="text-sm text-gray-700 mt-2">{{ match.score_display }}</p>
+          <p class="text-xs text-gray-500 mt-1">Round {{ match.round_number or '—' }}{% if match.stage %} • {{ match.stage }}{% endif %}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No results available yet.</p>
+  {% endif %}
+</section>
+
+{% if standings %}
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">League standings</h2>
+  <div class="overflow-hidden rounded-xl border border-gray-200">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50 text-gray-600">
+        <tr>
+          <th class="px-4 py-2 text-left font-medium">Team</th>
+          <th class="px-4 py-2 text-right font-medium">Pts</th>
+          <th class="px-4 py-2 text-right font-medium">W</th>
+          <th class="px-4 py-2 text-right font-medium">D</th>
+          <th class="px-4 py-2 text-right font-medium">L</th>
+          <th class="px-4 py-2 text-right font-medium">GF</th>
+          <th class="px-4 py-2 text-right font-medium">GA</th>
+          <th class="px-4 py-2 text-right font-medium">GD</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for entry in standings %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium text-gray-900">
+            <a href="{{ url_for('public.team_profile', team_id=entry.team.team_id) }}" class="hover:text-blue-600">{{ entry.team.name }}</a>
+          </td>
+          <td class="px-4 py-3 text-right font-semibold text-gray-900">{{ entry.points }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.record.wins }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.record.draws }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.record.losses }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.goals_for }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.goals_against }}</td>
+          <td class="px-4 py-3 text-right text-gray-600">{{ entry.goal_diff }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section>
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Participating teams</h2>
+  {% if tournament.tournament_teams %}
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {% for assoc in tournament.tournament_teams %}
+        {% set team = assoc.team %}
+        <article class="border border-gray-200 rounded-xl p-4 bg-white">
+          <header class="flex items-start justify-between">
+            <div>
+              <h3 class="font-semibold text-gray-900">
+                <a href="{{ url_for('public.team_profile', team_id=team.team_id) }}" class="hover:text-blue-600">{{ team.name }}</a>
+              </h3>
+              <p class="text-xs text-gray-500 mt-1">{{ team.department }} • {{ team.team_id }}</p>
+            </div>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">{{ assoc.status|capitalize }}</span>
+          </header>
+          <p class="text-xs text-gray-500 mt-3">Managed by {{ team.manager_name or '—' }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No teams registered yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

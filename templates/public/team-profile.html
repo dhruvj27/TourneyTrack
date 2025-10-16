@@ -1,0 +1,113 @@
+{% extends 'public_layout.html' %}
+{% block title %}{{ team.name }}{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+  <a href="{{ url_for('public.teams_listing') }}" class="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700">
+    ← All teams
+  </a>
+  <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900">{{ team.name }}</h1>
+      <p class="text-sm text-gray-600 mt-1">{{ team.department }} • {{ team.team_id }}</p>
+      <p class="text-xs text-gray-500">Managed by {{ team.manager_name or '—' }}{% if team.manager_contact %} • {{ team.manager_contact }}{% endif %}</p>
+    </div>
+    {% if team.is_self_managed %}
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Team managed</span>
+    {% else %}
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">SMC managed</span>
+    {% endif %}
+  </div>
+</header>
+
+<section class="grid gap-6 md:grid-cols-3 mb-10">
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Players</p>
+    <p class="text-2xl font-semibold text-gray-900 mt-2">{{ players|length }}</p>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Upcoming</p>
+    <p class="text-2xl font-semibold text-blue-600 mt-2">{{ upcoming_matches|length }}</p>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <p class="text-xs uppercase text-gray-500">Completed</p>
+    <p class="text-2xl font-semibold text-green-600 mt-2">{{ completed_matches|length }}</p>
+  </div>
+</section>
+
+{% if players %}
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Active roster</h2>
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for player in players %}
+      <article class="border border-gray-200 rounded-xl p-4 bg-white">
+        <h3 class="font-semibold text-gray-900">{{ player.name }}</h3>
+        <p class="text-xs text-gray-500 mt-1">Roll {{ player.roll_number }} • {{ player.department }}</p>
+        {% if player.year %}
+          <p class="text-xs text-gray-500 mt-1">Year: {{ player.year }}</p>
+        {% endif %}
+        {% if player.contact %}
+          <p class="text-xs text-gray-500 mt-1">Contact: {{ player.contact }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="mb-12">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Upcoming fixtures</h2>
+  {% if upcoming_matches %}
+    <div class="overflow-hidden rounded-xl border border-gray-200">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-gray-600">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium">Fixture</th>
+            <th class="px-4 py-2 text-left font-medium">Tournament</th>
+            <th class="px-4 py-2 text-left font-medium">Schedule</th>
+            <th class="px-4 py-2 text-left font-medium">Venue</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for match in upcoming_matches %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ match.versus_display }}</td>
+            <td class="px-4 py-3 text-gray-600">
+              <a href="{{ url_for('public.tournament_detail', tournament_id=match.tournament_id) }}" class="hover:text-blue-600">{{ match.tournament.name }}</a>
+            </td>
+            <td class="px-4 py-3 text-gray-600">{{ match.date.strftime('%b %d, %Y') }} • {{ match.time.strftime('%H:%M') }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ match.venue }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No upcoming fixtures scheduled.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent results</h2>
+  {% if completed_matches %}
+    <div class="grid gap-4 md:grid-cols-2">
+      {% for match in completed_matches %}
+        <article class="border border-gray-200 rounded-xl p-4 bg-white">
+          <header class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">{{ match.versus_display }}</h3>
+            {% if match.winner %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Winner: {{ match.winner.name }}</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Draw</span>
+            {% endif %}
+          </header>
+          <p class="text-xs text-gray-500 mt-1">{{ match.tournament.name }} • {{ match.date.strftime('%b %d, %Y') }}</p>
+          <p class="text-sm text-gray-700 mt-2">{{ match.score_display }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No results recorded yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

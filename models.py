@@ -3,7 +3,7 @@ import re
 import pytz
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, inspect, text
+from sqlalchemy import or_, inspect, text, func
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -15,6 +15,15 @@ AVAILABLE_INSTITUTIONS = (
     'Tech University',
     'Commerce College',
 )
+
+AVAILABLE_INSTITUTIONS = (
+    'Heritage Institute of Technology, Kolkata',
+    'General Institution',
+    'Tech University',
+    'Commerce College',
+)
+
+DEFAULT_MATCH_DURATION_MINUTES = 90
 
 
 def current_time():
@@ -186,6 +195,246 @@ class Notification(db.Model):
         return removed
 
 
+class Bracket(db.Model):
+    """Tournament format configuration and progression rules."""
+
+    __tablename__ = 'bracket'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False, unique=True)
+    format = db.Column(db.String(20), default='league')  # league or knockout
+    points_win = db.Column(db.Integer, default=3)
+    points_draw = db.Column(db.Integer, default=1)
+    points_loss = db.Column(db.Integer, default=0)
+    config_payload = db.Column(db.JSON, default=dict)
+    created_at = db.Column(db.DateTime, default=current_time)
+    updated_at = db.Column(db.DateTime, default=current_time, onupdate=current_time)
+
+    tournament = db.relationship('Tournament', back_populates='bracket', uselist=False)
+
+    def update_after_result(self, match: 'Match') -> None:
+        """Update standings or knockout progression after a result is posted."""
+        if not match or match.tournament_id != self.tournament_id:
+            return
+
+        if match.status != 'completed':
+            return
+
+        if self.format == 'knockout':
+            self._apply_knockout_progression(match)
+        else:
+            self._apply_league_points(match)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _apply_knockout_progression(self, match: 'Match') -> None:
+        if not match.winner_id:
+            return
+
+        winner_assoc = TournamentTeam.query.filter_by(
+            tournament_id=self.tournament_id,
+            team_id=match.winner_id,
+        ).first()
+        if winner_assoc:
+            winner_assoc.set_status('active')
+
+        loser_id = match.team1_id if match.team1_id != match.winner_id else match.team2_id
+        loser_assoc = TournamentTeam.query.filter_by(
+            tournament_id=self.tournament_id,
+            team_id=loser_id,
+        ).first()
+        if loser_assoc:
+            loser_assoc.set_status('eliminated')
+
+        if self._is_final_match(match) and winner_assoc:
+            winner_assoc.set_status('champion')
+            tournament = winner_assoc.tournament
+            if tournament and tournament.status != 'completed':
+                tournament.status = 'completed'
+
+        self._advance_knockout_bracket(match)
+
+    def _apply_league_points(self, match: 'Match') -> None:
+        team1_assoc = TournamentTeam.query.filter_by(
+            tournament_id=self.tournament_id,
+            team_id=match.team1_id,
+        ).first()
+        team2_assoc = TournamentTeam.query.filter_by(
+            tournament_id=self.tournament_id,
+            team_id=match.team2_id,
+        ).first()
+
+        if not team1_assoc or not team2_assoc:
+            return
+
+        team1_score = self._score_as_int(match.team1_score)
+        team2_score = self._score_as_int(match.team2_score)
+
+        if match.winner_id == match.team1_id:
+            team1_assoc.points += self.points_win
+            team2_assoc.points += self.points_loss
+            team1_assoc.set_status('active')
+            if team2_assoc.status == 'pending':
+                team2_assoc.set_status('active')
+        elif match.winner_id == match.team2_id:
+            team2_assoc.points += self.points_win
+            team1_assoc.points += self.points_loss
+            team2_assoc.set_status('active')
+            if team1_assoc.status == 'pending':
+                team1_assoc.set_status('active')
+        else:
+            team1_assoc.points += self.points_draw
+            team2_assoc.points += self.points_draw
+            team1_assoc.set_status('active')
+            team2_assoc.set_status('active')
+
+        team1_assoc.stats_payload = team1_assoc.stats_payload or {}
+        team2_assoc.stats_payload = team2_assoc.stats_payload or {}
+
+        team1_assoc.stats_payload['goals_for'] = team1_assoc.stats_payload.get('goals_for', 0) + team1_score
+        team1_assoc.stats_payload['goals_against'] = team1_assoc.stats_payload.get('goals_against', 0) + team2_score
+        team2_assoc.stats_payload['goals_for'] = team2_assoc.stats_payload.get('goals_for', 0) + team2_score
+        team2_assoc.stats_payload['goals_against'] = team2_assoc.stats_payload.get('goals_against', 0) + team1_score
+
+    def _score_as_int(self, score_value: str | None) -> int:
+        try:
+            return int(score_value)
+        except (TypeError, ValueError):
+            return 0
+
+    def _is_final_match(self, match: 'Match') -> bool:
+        if match.stage and match.stage.lower() == 'final':
+            return True
+
+        if match.round_number is None:
+            return False
+
+        max_round = db.session.query(func.max(Match.round_number)).filter(
+            Match.tournament_id == self.tournament_id,
+            Match.round_number.isnot(None),
+        ).scalar()
+
+        return bool(max_round and match.round_number == max_round)
+
+    def _advance_knockout_bracket(self, match: 'Match') -> None:
+        payload = self.config_payload or {}
+        match_map = payload.get('match_map') or {}
+        if not match.bracket_slot or match.bracket_slot not in match_map:
+            return
+
+        advance = match_map[match.bracket_slot].get('advance')
+        if not advance:
+            return
+
+        target_slot = advance.get('slot')
+        target_position = advance.get('position')
+        if not target_slot or target_position not in (1, 2):
+            return
+
+        target_config = match_map.get(target_slot, {})
+        schedule = target_config.get('schedule', {})
+        placeholders = target_config.get('placeholders', {})
+
+        next_match = Match.query.filter_by(tournament_id=self.tournament_id, bracket_slot=target_slot).first()
+
+        if not next_match:
+            next_match = Match(
+                tournament_id=self.tournament_id,
+                bracket_slot=target_slot,
+                round_number=target_config.get('round'),
+                stage=target_config.get('stage'),
+                date=self._resolve_schedule_date(schedule, match.date),
+                time=self._resolve_schedule_time(schedule, match.time),
+                venue=schedule.get('venue') or match.venue,
+                duration_minutes=schedule.get('duration') or match.duration_minutes or DEFAULT_MATCH_DURATION_MINUTES,
+                status='scheduled',
+            )
+            next_match.team1_placeholder = placeholders.get('team1')
+            next_match.team2_placeholder = placeholders.get('team2')
+            db.session.add(next_match)
+        else:
+            if not next_match.date:
+                next_match.date = self._resolve_schedule_date(schedule, match.date)
+            if not next_match.time:
+                next_match.time = self._resolve_schedule_time(schedule, match.time)
+            if not next_match.venue:
+                next_match.venue = schedule.get('venue') or match.venue
+            if not next_match.duration_minutes:
+                next_match.duration_minutes = schedule.get('duration') or match.duration_minutes or DEFAULT_MATCH_DURATION_MINUTES
+
+        if target_position == 1:
+            next_match.team1_id = match.winner_id
+            next_match.team1_placeholder = None
+        else:
+            next_match.team2_id = match.winner_id
+            next_match.team2_placeholder = None
+
+        if next_match.team1_id is None:
+            next_match.team1_placeholder = placeholders.get('team1')
+        if next_match.team2_id is None:
+            next_match.team2_placeholder = placeholders.get('team2')
+
+    def _resolve_schedule_date(self, schedule: dict, fallback_date: date | None) -> date:
+        date_str = schedule.get('date') if schedule else None
+        if date_str:
+            try:
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        if fallback_date:
+            return fallback_date
+        tournament = getattr(self, 'tournament', None)
+        return tournament.start_date if tournament else date.today()
+
+    def _resolve_schedule_time(self, schedule: dict, fallback_time: time | None) -> time:
+        time_str = schedule.get('time') if schedule else None
+        if time_str:
+            try:
+                return datetime.strptime(time_str, '%H:%M').time()
+            except ValueError:
+                pass
+        if fallback_time:
+            return fallback_time
+        return time(10, 0)
+
+    def league_table(self) -> list[dict]:
+        if self.format != 'league' or not self.tournament:
+            return []
+
+        standings = []
+        for assoc in self.tournament.tournament_teams:
+            if not assoc.team:
+                continue
+            record = assoc.team.get_match_record(self.tournament_id)
+            meta = assoc.stats_payload or {}
+            goals_for = meta.get('goals_for', 0)
+            goals_against = meta.get('goals_against', 0)
+            goal_diff = goals_for - goals_against
+            standings.append(
+                {
+                    'association': assoc,
+                    'team': assoc.team,
+                    'points': assoc.points,
+                    'record': record,
+                    'goals_for': goals_for,
+                    'goals_against': goals_against,
+                    'goal_diff': goal_diff,
+                }
+            )
+
+        standings.sort(
+            key=lambda entry: (
+                entry['points'],
+                entry['record']['wins'],
+                entry['goal_diff'],
+                entry['goals_for'],
+            ),
+            reverse=True,
+        )
+        return standings
+
+
 class Tournament(db.Model):
     __tablename__ = 'tournament'
 
@@ -197,11 +446,16 @@ class Tournament(db.Model):
     rules = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     institution = db.Column(db.String(100))
+    location = db.Column(db.String(100))
+    tournament_type = db.Column(db.String(20), default='league')
     created_at = db.Column(db.DateTime, default=current_time)
 
     matches = db.relationship('Match', backref='tournament', lazy=True, foreign_keys='Match.tournament_id')
     tournament_teams = db.relationship(
         'TournamentTeam', backref='tournament', lazy=True, cascade='all, delete-orphan'
+    )
+    bracket = db.relationship(
+        'Bracket', back_populates='tournament', uselist=False, cascade='all, delete-orphan'
     )
 
     def __repr__(self):  # pragma: no cover - debug helper
@@ -218,6 +472,23 @@ class Tournament(db.Model):
 
     def get_active_teams(self):
         return [tt.team for tt in self.tournament_teams if tt.status == 'active']
+
+    def ensure_bracket(self) -> 'Bracket':
+        if self.bracket:
+            return self.bracket
+        bracket = Bracket(
+            tournament_id=self.id,
+            format=self.tournament_type or 'league',
+        )
+        db.session.add(bracket)
+        self.bracket = bracket
+        return bracket
+
+    def active_standings(self):
+        bracket = self.bracket
+        if bracket and bracket.format == 'league':
+            return bracket.league_table()
+        return []
 
     def add_team(self, team, added_by, method='smc_added', auto_commit=False):
         """Attach team to tournament while respecting institution policy."""
@@ -282,6 +553,7 @@ class TournamentTeam(db.Model):
     approved_at = db.Column(db.DateTime)
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     status_updated_at = db.Column(db.DateTime, default=current_time)
+    stats_payload = db.Column(db.JSON, default=dict)
 
     __table_args__ = (db.UniqueConstraint('tournament_id', 'team_id', name='unique_tournament_team'),)
 
@@ -423,32 +695,42 @@ class Match(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
-    team1_id = db.Column(db.String(20), db.ForeignKey('team.team_id'), nullable=False)
-    team2_id = db.Column(db.String(20), db.ForeignKey('team.team_id'), nullable=False)
+    team1_id = db.Column(db.String(20), db.ForeignKey('team.team_id'))
+    team2_id = db.Column(db.String(20), db.ForeignKey('team.team_id'))
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
     venue = db.Column(db.String(100), nullable=False)
+    round_number = db.Column(db.Integer)
+    stage = db.Column(db.String(50))
+    duration_minutes = db.Column(db.Integer, default=DEFAULT_MATCH_DURATION_MINUTES)
     team1_score = db.Column(db.String(100))
     team2_score = db.Column(db.String(100))
     winner_id = db.Column(db.String(20), db.ForeignKey('team.team_id'))
     status = db.Column(db.String(20), default='scheduled')
+    bracket_slot = db.Column(db.String(40))
+    team1_placeholder = db.Column(db.String(100))
+    team2_placeholder = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=current_time)
 
     @property
     def is_upcoming(self):
         """Check if match is upcoming"""
         return self.status == 'scheduled' and self.date >= date.today()
+
+    @property
+    def is_live(self):
+        return self.status == 'active'
     
     @property
     def versus_display(self):
         """Display match as Team A vs Team B"""
-        return f"{self.team1.name} vs {self.team2.name}"
+        return f"{self._display_name(1)} vs {self._display_name(2)}"
     
     @property
     def score_display(self) -> str:
         if self.status != 'completed':
             return "Match not completed"
-        return f"{self.team1.name}: {self.team1_score} | {self.team2.name}: {self.team2_score}"
+        return f"{self._display_name(1)}: {self.team1_score} | {self._display_name(2)}: {self.team2_score}"
 
     @property
     def result_display(self) -> str:
@@ -459,11 +741,39 @@ class Match(db.Model):
         return "Match drawn"
 
     def opponent_of(self, team_id):
+        if not team_id:
+            return None
         if self.team1_id == team_id:
             return self.team2
         if self.team2_id == team_id:
             return self.team1
         return None
+
+    @property
+    def duration_label(self) -> str:
+        minutes = self.duration_minutes or DEFAULT_MATCH_DURATION_MINUTES
+        return f"{minutes} min"
+
+    @property
+    def start_datetime(self) -> datetime:
+        return datetime.combine(self.date, self.time)
+
+    @property
+    def end_datetime(self) -> datetime:
+        minutes = self.duration_minutes or DEFAULT_MATCH_DURATION_MINUTES
+        return self.start_datetime + timedelta(minutes=minutes)
+
+    def overlaps_range(self, start_dt: datetime, end_dt: datetime) -> bool:
+        return self.start_datetime < end_dt and start_dt < self.end_datetime
+
+    def _display_name(self, slot: int) -> str:
+        team = self.team1 if slot == 1 else self.team2
+        placeholder = self.team1_placeholder if slot == 1 else self.team2_placeholder
+        if team:
+            return team.name
+        if placeholder:
+            return placeholder
+        return 'TBD'
 
 
 def init_default_data():
@@ -533,3 +843,76 @@ def ensure_schema_integrity():
     if 'actor_id' not in notification_columns:
         with db.engine.begin() as connection:
             connection.execute(text('ALTER TABLE notification ADD COLUMN actor_id INTEGER'))
+
+    try:
+        tournament_columns = {col['name'] for col in inspector.get_columns('tournament')}
+    except Exception:
+        return
+
+    migrations: list[tuple[str, str]] = []
+
+    if 'tournament_type' not in tournament_columns:
+        migrations.append(('tournament', 'ALTER TABLE tournament ADD COLUMN tournament_type VARCHAR(20) DEFAULT "league"'))
+    if 'location' not in tournament_columns:
+        migrations.append(('tournament', 'ALTER TABLE tournament ADD COLUMN location VARCHAR(100)'))
+
+    for table_name, ddl in migrations:
+        with db.engine.begin() as connection:
+            connection.execute(text(ddl))
+
+    try:
+        bracket_columns = inspector.get_columns('bracket')
+    except Exception:
+        bracket_columns = None
+
+    if bracket_columns is None:
+        with db.engine.begin() as connection:
+            connection.execute(
+                text(
+                    '''CREATE TABLE IF NOT EXISTS bracket (
+                        id INTEGER PRIMARY KEY,
+                        tournament_id INTEGER UNIQUE NOT NULL,
+                        format VARCHAR(20) DEFAULT 'league',
+                        points_win INTEGER DEFAULT 3,
+                        points_draw INTEGER DEFAULT 1,
+                        points_loss INTEGER DEFAULT 0,
+                        config_payload JSON,
+                        created_at DATETIME,
+                        updated_at DATETIME,
+                        FOREIGN KEY(tournament_id) REFERENCES tournament(id)
+                    )'''
+                )
+            )
+
+    try:
+        tournament_team_columns = {col['name'] for col in inspector.get_columns('tournament_team')}
+    except Exception:
+        return
+
+    if 'stats_payload' not in tournament_team_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE tournament_team ADD COLUMN stats_payload JSON'))
+
+    try:
+        match_columns = {col['name'] for col in inspector.get_columns('match')}
+    except Exception:
+        return
+
+    if 'round_number' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE match ADD COLUMN round_number INTEGER'))
+    if 'stage' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE match ADD COLUMN stage VARCHAR(50)'))
+    if 'duration_minutes' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text(f'ALTER TABLE match ADD COLUMN duration_minutes INTEGER DEFAULT {DEFAULT_MATCH_DURATION_MINUTES}'))
+    if 'bracket_slot' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE match ADD COLUMN bracket_slot VARCHAR(40)'))
+    if 'team1_placeholder' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE match ADD COLUMN team1_placeholder VARCHAR(100)'))
+    if 'team2_placeholder' not in match_columns:
+        with db.engine.begin() as connection:
+            connection.execute(text('ALTER TABLE match ADD COLUMN team2_placeholder VARCHAR(100)'))

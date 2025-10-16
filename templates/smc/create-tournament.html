@@ -79,6 +79,26 @@
 					<textarea id="rules" name="rules" rows="5" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Share format details, eligibility requirements, or scheduling notes.">{{ request.form.get('rules', '') }}</textarea>
 				</div>
 
+				<div>
+					<p class="block text-sm font-medium text-gray-700 mb-2">Tournament Format</p>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<label class="flex items-start gap-3 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-400 transition">
+							<input type="radio" name="tournament_type" value="league" {% if request.form.get('tournament_type', 'league') == 'league' %}checked{% endif %} class="mt-1" />
+							<div>
+								<p class="text-sm font-semibold text-gray-900">League</p>
+								<p class="text-xs text-gray-600">Round-robin or points-based standings. Configure scoring later.</p>
+							</div>
+						</label>
+						<label class="flex items-start gap-3 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-400 transition">
+							<input type="radio" name="tournament_type" value="knockout" {% if request.form.get('tournament_type') == 'knockout' %}checked{% endif %} class="mt-1" />
+							<div>
+								<p class="text-sm font-semibold text-gray-900">Knockout</p>
+								<p class="text-xs text-gray-600">Bracketed elimination. Seed teams after creation.</p>
+							</div>
+						</label>
+					</div>
+				</div>
+
 				<div class="flex justify-end gap-3">
 					<a href="{{ url_for('smc.dashboard') }}" class="px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700 transition">Cancel</a>
 					<button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">Create Tournament</button>

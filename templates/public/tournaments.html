@@ -1,0 +1,103 @@
+{% extends 'public_layout.html' %}
+{% block title %}Tournaments{% endblock %}
+
+{% block content %}
+<section class="mb-10">
+  <header class="mb-6">
+    <h1 class="text-3xl font-semibold text-gray-900">Tournaments</h1>
+    <p class="text-sm text-gray-600 mt-2">Review active, upcoming, and completed tournaments along with their latest fixtures.</p>
+  </header>
+
+  {% if summaries %}
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {% for summary in summaries %}
+        {% set tournament = summary.tournament %}
+        <article class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 flex flex-col gap-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">
+                <a href="{{ url_for('public.tournament_detail', tournament_id=tournament.id) }}" class="hover:text-blue-600 transition">{{ tournament.name }}</a>
+              </h2>
+              <p class="text-xs text-gray-500 mt-1">
+                {{ tournament.start_date.strftime('%b %d, %Y') }} – {{ tournament.end_date.strftime('%b %d, %Y') }}
+                • {{ tournament.status|capitalize }}
+              </p>
+              <p class="text-xs text-gray-500">Hosted by {{ tournament.institution or 'Open' }}{% if tournament.location %} • {{ tournament.location }}{% endif %}</p>
+            </div>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+              {{ tournament.tournament_type|capitalize }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-6 text-sm text-gray-600">
+            <div>
+              <p class="text-xs uppercase text-gray-500">Teams</p>
+              <p class="text-base font-semibold text-gray-900">{{ summary.active_team_count }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-gray-500">Live</p>
+              <p class="text-base font-semibold text-emerald-600">{{ summary.live_matches|length }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-gray-500">Upcoming</p>
+              <p class="text-base font-semibold text-blue-600">{{ summary.upcoming_matches|length }}</p>
+            </div>
+          </div>
+
+          {% if summary.live_matches %}
+            <div>
+              <p class="text-xs uppercase text-gray-500 mb-2">Live matches</p>
+              <ul class="space-y-2 text-sm">
+                {% for match in summary.live_matches %}
+                  <li class="border border-emerald-200 rounded-lg px-3 py-2 bg-emerald-50">
+                    <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                    <div class="text-xs text-emerald-700">{{ match.date.strftime('%b %d, %Y') }} • {{ match.venue }}</div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if summary.upcoming_matches %}
+            <div>
+              <p class="text-xs uppercase text-gray-500 mb-2">Upcoming fixtures</p>
+              <ul class="space-y-2 text-sm">
+                {% for match in summary.upcoming_matches %}
+                  <li class="border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
+                    <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                    <div class="text-xs text-gray-600">{{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') }} • {{ match.venue }}</div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if summary.recent_results %}
+            <div>
+              <p class="text-xs uppercase text-gray-500 mb-2">Recent results</p>
+              <ul class="space-y-2 text-sm">
+                {% for match in summary.recent_results %}
+                  <li class="border border-gray-200 rounded-lg px-3 py-2">
+                    <div class="font-medium text-gray-900">{{ match.versus_display }}</div>
+                    <div class="text-xs text-gray-600">{{ match.score_display }}</div>
+                    <div class="text-xs text-gray-500">{{ match.result_display }}</div>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          <div class="mt-auto flex justify-end">
+            <a href="{{ url_for('public.tournament_detail', tournament_id=tournament.id) }}" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700">
+              View details
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No tournaments published yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Public View{% endblock %} • TourneyTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-6">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700">
+          ← Back to app
+        </a>
+        <nav class="flex items-center gap-4 text-sm text-gray-600">
+          <a href="{{ url_for('public.tournaments_listing') }}" class="hover:text-blue-600 {% if request.endpoint == 'public.tournaments_listing' %}text-blue-600 font-semibold{% endif %}">Tournaments</a>
+          <a href="{{ url_for('public.teams_listing') }}" class="hover:text-blue-600 {% if request.endpoint == 'public.teams_listing' %}text-blue-600 font-semibold{% endif %}">Teams</a>
+          <a href="{{ url_for('public.match_hub') }}" class="hover:text-blue-600 {% if request.endpoint == 'public.match_hub' %}text-blue-600 font-semibold{% endif %}">Matches</a>
+        </nav>
+      </div>
+      <div class="text-xs text-gray-500">
+        Public view powered by TourneyTrack
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-10">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-6 space-y-2">
+          {% for category, message in messages %}
+            <div class="px-4 py-3 rounded border text-sm
+              {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+              {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+              {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+              {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+    © {{ current_year or 2025 }} TourneyTrackers. Public viewing portal.
+  </footer>
+</body>
+</html>

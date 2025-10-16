@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Configure Bracket • {{ tournament.name }}</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+	<nav class="bg-gray-900 text-white shadow">
+		<div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+			<div class="flex items-center gap-3">
+				<a href="{{ url_for('smc.tournament_detail', tournament_id=tournament.id) }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/10 text-sm font-medium hover:bg-white/20 transition" aria-label="Back to tournament">
+					<span aria-hidden="true">←</span>
+					<span>{{ tournament.name }}</span>
+				</a>
+				<span class="text-lg font-semibold">Configure Bracket</span>
+			</div>
+			<div class="flex items-center gap-4 text-sm">
+				<a href="{{ url_for('smc.notifications', status='active') }}" class="relative inline-flex items-center justify-center p-2 rounded-full hover:bg-white/10 transition" aria-label="Notifications">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+						<path d="M13.73 21a2 2 0 01-3.46 0"></path>
+					</svg>
+					{% if unread_notification_count %}
+						<span class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[1.25rem] px-1 py-0.5 text-xs font-semibold bg-blue-500 text-white rounded-full">{{ unread_notification_count }}</span>
+					{% endif %}
+				</a>
+				<a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 transition">Logout</a>
+			</div>
+		</div>
+	</nav>
+
+	{% with messages = get_flashed_messages(with_categories=true) %}
+		{% if messages %}
+			<div class="max-w-4xl mx-auto w-full px-4 mt-6">
+				<div class="space-y-2">
+					{% for category, message in messages %}
+						<div class="px-4 py-3 rounded border text-sm
+							{% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+							{% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+							{% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+							{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+							{{ message }}
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+		{% endif %}
+	{% endwith %}
+
+	<main class="flex-grow max-w-4xl mx-auto w-full px-4 py-10 space-y-8">
+		<header class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+			<h1 class="text-2xl font-semibold text-gray-900">Bracket settings</h1>
+			<p class="text-sm text-gray-600 mt-2">Switch between league and knockout formats, adjust scoring, and seed knockout fixtures. Knockout winners will automatically populate subsequent rounds.</p>
+		</header>
+
+		<form method="POST" class="space-y-10" id="bracket-config-form">
+			<section class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
+				<h2 class="text-xl font-semibold text-gray-900">Format</h2>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="flex items-start gap-3 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-400 transition">
+						<input type="radio" name="format" value="league" {% if bracket.format == 'league' %}checked{% endif %} class="mt-1" />
+						<div>
+							<p class="text-sm font-semibold text-gray-900">League</p>
+							<p class="text-xs text-gray-600">Teams earn points for wins and draws. Standings update after each result.</p>
+						</div>
+					</label>
+					<label class="flex items-start gap-3 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-400 transition">
+						<input type="radio" name="format" value="knockout" {% if bracket.format == 'knockout' %}checked{% endif %} class="mt-1" />
+						<div>
+							<p class="text-sm font-semibold text-gray-900">Knockout</p>
+							<p class="text-xs text-gray-600">Configure seeded brackets. Winners advance automatically; placeholders update as results come in.</p>
+						</div>
+					</label>
+				</div>
+			</section>
+
+			<section id="league-settings" class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
+				<h2 class="text-xl font-semibold text-gray-900">League scoring</h2>
+				<p class="text-sm text-gray-600">Set the number of points awarded for each outcome. Applies when the tournament runs in league format.</p>
+				<div class="grid gap-6 sm:grid-cols-3">
+					<label class="block text-sm font-medium text-gray-700">Points for win
+						<input type="number" name="points_win" value="{{ league_defaults.points_win }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+					</label>
+					<label class="block text-sm font-medium text-gray-700">Points for draw
+						<input type="number" name="points_draw" value="{{ league_defaults.points_draw }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+					</label>
+					<label class="block text-sm font-medium text-gray-700">Points for loss
+						<input type="number" name="points_loss" value="{{ league_defaults.points_loss }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+					</label>
+				</div>
+				<p class="text-xs text-gray-500">League scoring changes take effect immediately once saved.</p>
+			</section>
+
+			<section id="knockout-settings" class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
+				<div class="flex flex-wrap items-center justify-between gap-4">
+					<div>
+						<h2 class="text-xl font-semibold text-gray-900">Knockout bracket</h2>
+						<p class="text-sm text-gray-600">Select the bracket size and assign seeds to participating teams. You can schedule placeholders for later rounds now, or leave dates and times empty to finalize later—winners will populate automatically.</p>
+					</div>
+					<div class="min-w-[12rem]">
+						<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide" for="knockout_size">Bracket size</label>
+						<input type="number" id="knockout_size" name="knockout_size" min="{{ MIN_KNOCKOUT_SIZE }}" max="{{ MAX_KNOCKOUT_SIZE }}" value="{{ selected_size }}" step="1" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+						<p class="mt-1 text-xs text-gray-500">Supports {{ MIN_KNOCKOUT_SIZE }}-{{ MAX_KNOCKOUT_SIZE }} teams. BYEs are added automatically when needed.</p>
+						{% if knockout_template.effective_size > selected_size %}
+							<p class="mt-1 text-xs text-amber-600">{{ knockout_template.effective_size - selected_size }} BYE slot{{ 's' if (knockout_template.effective_size - selected_size) != 1 else '' }} will advance top seeds automatically.</p>
+						{% endif %}
+					</div>
+				</div>
+
+				<div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+					<h3 class="text-lg font-semibold text-gray-900">Seed assignments</h3>
+					<p class="text-xs text-gray-600 mb-4">Allocate each seed to a team. Leave a seed blank to decide later—unassigned seeds remain placeholders until teams join.</p>
+					<div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+						{% for idx in range(1, selected_size + 1) %}
+							<label class="block text-sm font-medium text-gray-700">Seed {{ idx }}
+								<select name="seed_{{ idx }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+									<option value="">Select team…</option>
+									{% for team in available_teams %}
+										<option value="{{ team.team_id }}" {% if seed_map.get(idx) == team.team_id %}selected{% endif %}>{{ team.name }} • {{ team.team_id }}</option>
+									{% endfor %}
+								</select>
+							</label>
+						{% endfor %}
+					</div>
+				</div>
+
+				<div class="space-y-6">
+					{% for round_entry in knockout_template.rounds %}
+						<div class="border border-gray-200 rounded-lg p-4">
+							<h3 class="text-lg font-semibold text-gray-900">{{ round_entry.stage_name }}</h3>
+							<div class="mt-4 space-y-4">
+								{% for match_entry in round_entry.matches %}
+									<div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+										<p class="text-sm font-semibold text-gray-900">{{ match_entry.label }}</p>
+										{% set seed1 = match_entry.get('seed1') %}
+										{% set seed2 = match_entry.get('seed2') %}
+										{% set placeholder1 = match_entry.placeholders.get('team1') if match_entry.placeholders else None %}
+										{% set placeholder2 = match_entry.placeholders.get('team2') if match_entry.placeholders else None %}
+										{% if seed1 or seed2 %}
+											<p class="text-xs text-gray-600 mt-1">
+												{{ seed1 and ('Seed ' ~ seed1) or (placeholder1 or 'Winner TBD') }}
+												<span class="mx-1">vs</span>
+												{{ seed2 and ('Seed ' ~ seed2) or (placeholder2 or 'Winner TBD') }}
+											</p>
+										{% else %}
+											<p class="text-xs text-gray-600 mt-1">{{ placeholder1 or 'Winner TBD' }} vs {{ placeholder2 or 'Winner TBD' }}</p>
+										{% endif %}
+
+										<div class="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+											<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Date
+												<input type="date" name="date_{{ match_entry.slot }}" value="{{ schedule_prefill.get(match_entry.slot, {}).get('date') }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+											</label>
+											<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Time
+												<input type="time" name="time_{{ match_entry.slot }}" value="{{ schedule_prefill.get(match_entry.slot, {}).get('time') }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+											</label>
+											<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Venue
+												<input type="text" name="venue_{{ match_entry.slot }}" value="{{ schedule_prefill.get(match_entry.slot, {}).get('venue') }}" placeholder="e.g. Main Court" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+											</label>
+											<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Duration (min)
+												<input type="number" min="10" step="5" name="duration_{{ match_entry.slot }}" value="{{ schedule_prefill.get(match_entry.slot, {}).get('duration', 60) }}" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+											</label>
+										</div>
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+					{% endfor %}
+				</div>
+			</section>
+
+			<div class="flex justify-end gap-3">
+				<a href="{{ url_for('smc.tournament_detail', tournament_id=tournament.id) }}" class="px-4 py-2 rounded border border-gray-300 text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700 transition">Cancel</a>
+				<button type="submit" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">Save configuration</button>
+			</div>
+		</form>
+	</main>
+
+	<footer class="bg-gray-900 text-gray-300 text-center text-sm py-4 mt-auto">
+		© 2025 TourneyTrackers. All rights reserved.
+	</footer>
+
+	<script>
+		const formatInputs = document.querySelectorAll('input[name="format"]');
+		const leagueSection = document.getElementById('league-settings');
+		const knockoutSection = document.getElementById('knockout-settings');
+		const sizeSelect = document.getElementById('knockout_size');
+
+		function toggleSections() {
+			const selected = document.querySelector('input[name="format"]:checked');
+			if (!selected) return;
+			if (selected.value === 'league') {
+				leagueSection.classList.remove('hidden');
+				knockoutSection.classList.add('hidden');
+			} else {
+				leagueSection.classList.add('hidden');
+				knockoutSection.classList.remove('hidden');
+			}
+		}
+
+		formatInputs.forEach((input) => input.addEventListener('change', toggleSections));
+		if (sizeSelect) {
+			sizeSelect.addEventListener('change', (event) => {
+				const value = parseInt(event.target.value, 10);
+				if (!Number.isFinite(value)) return;
+				const url = new URL(window.location.href);
+				url.searchParams.set('size', value);
+				window.location.href = url.toString();
+			});
+		}
+		toggleSections();
+	</script>
+</body>
+</html>

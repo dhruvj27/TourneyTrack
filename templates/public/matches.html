@@ -1,0 +1,89 @@
+{% extends 'public_layout.html' %}
+{% block title %}Matches{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+  <h1 class="text-3xl font-semibold text-gray-900">Matches</h1>
+  <p class="text-sm text-gray-600 mt-2">Track live results, upcoming fixtures, and recent outcomes across all tournaments.</p>
+</header>
+
+<section class="mb-10">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Live matches</h2>
+  {% if live_matches %}
+    <ul class="grid gap-4 md:grid-cols-2">
+      {% for match in live_matches %}
+        <li class="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-semibold text-gray-900">{{ match.versus_display }}</p>
+              <p class="text-xs text-emerald-700">{{ match.tournament.name }} • {{ match.venue }}</p>
+            </div>
+            <span class="text-xs uppercase font-semibold text-emerald-700">Live</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-2">Started {{ match.date.strftime('%b %d, %Y') }} at {{ match.time.strftime('%H:%M') }} • Duration {{ match.duration_label }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-gray-500">No matches live at the moment.</p>
+  {% endif %}
+</section>
+
+<section class="mb-10">
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Upcoming fixtures</h2>
+  {% if upcoming_matches %}
+    <div class="overflow-hidden rounded-xl border border-gray-200">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-gray-600">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium">Fixture</th>
+            <th class="px-4 py-2 text-left font-medium">Tournament</th>
+            <th class="px-4 py-2 text-left font-medium">Schedule</th>
+            <th class="px-4 py-2 text-left font-medium">Venue</th>
+            <th class="px-4 py-2 text-left font-medium">Duration</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for match in upcoming_matches %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-medium text-gray-900">{{ match.versus_display }}</td>
+            <td class="px-4 py-3 text-gray-600">
+              <a href="{{ url_for('public.tournament_detail', tournament_id=match.tournament_id) }}" class="hover:text-blue-600">{{ match.tournament.name }}</a>
+            </td>
+            <td class="px-4 py-3 text-gray-600">{{ match.date.strftime('%b %d, %Y') }} • {{ match.time.strftime('%H:%M') }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ match.venue }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ match.duration_label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No upcoming fixtures scheduled.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent results</h2>
+  {% if recent_results %}
+    <div class="grid gap-4 md:grid-cols-2">
+      {% for match in recent_results %}
+        <article class="border border-gray-200 rounded-xl p-4 bg-white">
+          <header class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">{{ match.versus_display }}</h3>
+            {% if match.winner %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Winner: {{ match.winner.name }}</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Draw</span>
+            {% endif %}
+          </header>
+          <p class="text-xs text-gray-500 mt-1">{{ match.tournament.name }} • {{ match.date.strftime('%b %d, %Y') }} • {{ match.venue }}</p>
+          <p class="text-sm text-gray-700 mt-2">{{ match.score_display }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-sm text-gray-500">No results recorded yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

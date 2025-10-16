@@ -19,6 +19,7 @@ from blueprints.auth import auth_bp, load_current_user
 
 from blueprints.smc import smc_bp
 from blueprints.team import team_bp
+from blueprints.public import public_bp
 
 app = Flask(__name__)
 
@@ -70,6 +71,7 @@ with app.app_context():
 app.register_blueprint(auth_bp)
 app.register_blueprint(smc_bp)
 app.register_blueprint(team_bp)
+app.register_blueprint(public_bp)
 
 @app.before_request
 def before_request():
@@ -303,26 +305,8 @@ def update_profile():
 
 @app.route('/public-view')
 def public_view():
-    """Combined public view of fixtures and results"""
-    tournament = get_default_tournament()
-    
-    # Get upcoming matches
-    upcoming_matches = Match.query.filter(
-        Match.tournament_id == tournament.id,
-        Match.status == 'scheduled',
-        Match.date >= date.today()
-    ).order_by(Match.date, Match.time).all()
-    
-    # Get completed matches
-    completed_matches = Match.query.filter(
-        Match.tournament_id == tournament.id,
-        Match.status == 'completed'
-    ).order_by(Match.date.desc(), Match.time.desc()).limit(10).all()
-    
-    return render_template('public-view.html',
-                         tournament=tournament,
-                         upcoming_matches=upcoming_matches,
-                         completed_matches=completed_matches)
+    """Legacy route: redirect to new public tournaments listing."""
+    return redirect(url_for('public.tournaments_listing'))
 
 
 if __name__ == "__main__":
